@@ -4,8 +4,13 @@
 	"login": {
 		"welcome": "Willkommen bei StepChef",
 		"email_placeholder": "koch@haushalt.de",
+		"password_placeholder": "passwort",
 		"sign_in": "Anmelden"
 	},
 	"btn_next_step": "Nächster Schritt",
-	"btn_sign_out": "Abmelden"
+	"dropdown": {
+		"btn_sign_out": "Abmelden",
+		"settings": "Einstellungen",
+		"language": "Sprache"
+	}
 }

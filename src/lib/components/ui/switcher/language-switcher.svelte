@@ -15,25 +15,21 @@
 		{#snippet child({ props })}
 			<Button {...props} variant="outline" size="icon" class="rounded-full">
 				<User class="h-5 w-5 text-stone-600" />
-				<span class="sr-only">Menü öffnen</span>
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
 
 	<DropdownMenu.Content class="w-56" align="end">
-		<DropdownMenu.Label>Mein Haushalt</DropdownMenu.Label>
-		<DropdownMenu.Separator />
-
 		<DropdownMenu.Group>
 			<DropdownMenu.Item>
 				<Settings class="mr-2 h-4 w-4" />
-				<span>Einstellungen</span>
+				<span>{m['dropdown.settings']()}</span>
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
 		<DropdownMenu.Sub>
 			<DropdownMenu.SubTrigger>
 				<Languages class="mr-2 h-4 w-4" />
-				<span>Sprache</span>
+				<span>{m['dropdown.language']()}</span>
 			</DropdownMenu.SubTrigger>
 			<DropdownMenu.Portal>
 				<DropdownMenu.SubContent>
@@ -47,7 +43,7 @@
 
 		<DropdownMenu.Item class="text-red-600 focus:text-red-600">
 			<LogOut class="mr-2 h-4 w-4" />
-			<span>{m.btn_sign_out()}</span>
+			<span>{m['dropdown.btn_sign_out']()}</span>
 		</DropdownMenu.Item>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

@@ -4,8 +4,13 @@
 	"login": {
 		"welcome": "Welcome to StepChef",
 		"email_placeholder": "chef@household.com",
+		"password_placeholder": "password",
 		"sign_in": "Sign In"
 	},
 	"btn_next_step": "Next Step",
-	"btn_sign_out": "Sign Out"
+	"dropdown": {
+		"btn_sign_out": "Sign Out",
+		"settings": "Settings",
+		"language": "Language"
+	}
 }

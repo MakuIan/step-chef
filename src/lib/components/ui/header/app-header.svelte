@@ -3,6 +3,6 @@
 </script>
 
 <header class="flex justify-between">
-	<div>StepChef</div>
+	<div>StepChef Logo Placeholder</div>
 	<LanguageSwitcher />
 </header>

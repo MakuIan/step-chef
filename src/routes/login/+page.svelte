@@ -6,10 +6,10 @@
 	import * as m from '$lib/paraglide/messages';
 </script>
 
-<main class="flex h-screen items-center justify-center bg-stone-50 p-4">
+<main class="flex h-screen items-center justify-center p-4">
 	<Card.Root class="w-full max-w-md">
 		<Card.Header class="space-y-1 text-center">
-			<Card.Title class="text-2xl font-bold tracking-tight">{m['login.welcome']}</Card.Title>
+			<Card.Title class="text-2xl font-bold tracking-tight">{m['login.welcome']()}</Card.Title>
 		</Card.Header>
 
 		<Card.Content class="space-y-4">
@@ -17,8 +17,12 @@
 				<Label for="email">Email</Label>
 				<Input id="email" type="email" placeholder={m['login.email_placeholder']()} />
 			</div>
+			<div class="space-y-2">
+				<Label for="password">Password</Label>
+				<Input id="password" type="password" placeholder={m['login.password_placeholder']()} />
+			</div>
 			<Button class="w-full">
-				{m['login.sign_in']}
+				{m['login.sign_in']()}
 			</Button>
 		</Card.Content>
 	</Card.Root>
