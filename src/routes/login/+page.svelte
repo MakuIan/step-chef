@@ -13,17 +13,29 @@
 		</Card.Header>
 
 		<Card.Content class="space-y-4">
-			<div class="space-y-2">
-				<Label for="email">Email</Label>
-				<Input id="email" type="email" placeholder={m['login.email_placeholder']()} />
-			</div>
-			<div class="space-y-2">
-				<Label for="password">Password</Label>
-				<Input id="password" type="password" placeholder={m['login.password_placeholder']()} />
-			</div>
-			<Button class="w-full">
-				{m['login.sign_in']()}
-			</Button>
+			<form action="?/login">
+				<div class="space-y-2">
+					<Label for="email">Email</Label>
+					<Input
+						id="email"
+						name="email"
+						type="email"
+						placeholder={m['login.email_placeholder']()}
+					/>
+				</div>
+				<div class="space-y-2">
+					<Label for="password">Password</Label>
+					<Input
+						id="password"
+						name="password"
+						type="password"
+						placeholder={m['login.password_placeholder']()}
+					/>
+				</div>
+				<Button class="w-full">
+					{m['login.sign_in']()}
+				</Button>
+			</form>
 		</Card.Content>
 	</Card.Root>
 </main>
