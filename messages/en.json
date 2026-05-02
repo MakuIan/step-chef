@@ -1,4 +1,11 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hello, {name} from en!"
+	"app_title": "StepChef",
+	"login": {
+		"welcome": "Welcome to StepChef",
+		"email_placeholder": "chef@household.com",
+		"sign_in": "Sign In"
+	},
+	"btn_next_step": "Next Step",
+	"btn_sign_out": "Sign Out"
 }
