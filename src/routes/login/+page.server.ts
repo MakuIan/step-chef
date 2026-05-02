@@ -52,7 +52,10 @@ export const actions: Actions = {
 
 		const { data: authData, error: authError } = await supabase.auth.signUp({
 			email,
-			password
+			password,
+			options: {
+				emailRedirectTo: '/dashboard'
+			}
 		});
 
 		if (authError) {

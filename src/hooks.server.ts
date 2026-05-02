@@ -1,6 +1,9 @@
-import type { Handle } from '@sveltejs/kit';
+import { redirect, type Handle } from '@sveltejs/kit';
 import { getTextDirection } from '$lib/paraglide/runtime';
 import { paraglideMiddleware } from '$lib/paraglide/server';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { createServerClient } from '@supabase/ssr';
+import { sequence } from '@sveltejs/kit/hooks';
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
@@ -14,4 +17,41 @@ const handleParaglide: Handle = ({ event, resolve }) =>
 		});
 	});
 
-export const handle: Handle = handleParaglide;
+const handleAuth: Handle = async ({ event, resolve }) => {
+	event.locals.supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+		cookies: {
+			getAll: () => event.cookies.getAll(),
+			setAll: (cookiesToSet) => {
+				cookiesToSet.forEach(({ name, value, options }) => {
+					event.cookies.set(name, value, { ...options, path: '/' });
+				});
+			}
+		}
+	});
+
+	const {
+		data: { session }
+	} = await event.locals.supabase.auth.getSession();
+
+	event.locals.session = session;
+	event.locals.user = session?.user || null;
+
+	const isAuthRoute =
+		event.url.pathname.startsWith('/login') ||
+		event.url.pathname.startsWith('/signup') ||
+		event.url.pathname.startsWith('/auth');
+
+	if (!session && !isAuthRoute) {
+		throw redirect(303, '/login');
+	}
+	if (session && isAuthRoute && !event.url.pathname.startsWith('/auth/callback')) {
+		throw redirect(303, '/dashboard');
+	}
+	return resolve(event, {
+		filterSerializedResponseHeaders(name) {
+			return name === 'content-range' || name === 'x-supabase-api-version';
+		}
+	});
+};
+
+export const handle: Handle = sequence(handleParaglide, handleAuth);

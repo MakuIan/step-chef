@@ -1,3 +1,5 @@
+import { SupabaseClient, Session, User } from '@supabase/supabase-js';
+
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 declare global {
@@ -7,6 +9,11 @@ declare global {
 			ctx: ExecutionContext;
 			caches: CacheStorage;
 			cf?: IncomingRequestCfProperties;
+		}
+		interface Locals {
+			supabase: SupabaseClient;
+			session: Session | null;
+			user: User | null;
 		}
 
 		// interface Error {}
