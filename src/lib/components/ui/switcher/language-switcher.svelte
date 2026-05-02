@@ -29,18 +29,19 @@
 				<Settings class="mr-2 h-4 w-4" />
 				<span>Einstellungen</span>
 			</DropdownMenu.Item>
-
-			<DropdownMenu.Sub>
-				<DropdownMenu.SubTrigger>
-					<Languages class="mr-2 h-4 w-4" />
-					<span>Sprache</span>
-				</DropdownMenu.SubTrigger>
+		</DropdownMenu.Group>
+		<DropdownMenu.Sub>
+			<DropdownMenu.SubTrigger>
+				<Languages class="mr-2 h-4 w-4" />
+				<span>Sprache</span>
+			</DropdownMenu.SubTrigger>
+			<DropdownMenu.Portal>
 				<DropdownMenu.SubContent>
 					<DropdownMenu.Item onclick={() => switchLanguage('de')}>Deutsch</DropdownMenu.Item>
 					<DropdownMenu.Item onclick={() => switchLanguage('en')}>English</DropdownMenu.Item>
 				</DropdownMenu.SubContent>
-			</DropdownMenu.Sub>
-		</DropdownMenu.Group>
+			</DropdownMenu.Portal>
+		</DropdownMenu.Sub>
 
 		<DropdownMenu.Separator />
 
