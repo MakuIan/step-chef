@@ -4,6 +4,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Card, CardContent } from '$lib/components/ui/card';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { fly } from 'svelte/transition';
 	import { DefaultChatTransport } from 'ai';
 
 	const chat = new Chat({
@@ -77,25 +78,26 @@
 										{#if toolInput && toolInput.recipes}
 											<div class="mt-2 flex flex-col gap-2">
 												<p class="text-sm font-semibold text-gray-500">Vorgeschlagene Rezepte:</p>
-
-												{#each toolInput.recipes as recipe, index (index)}
-													<div class="rounded-lg border p-3 transition-colors hover:bg-gray-50">
-														<h4 class="font-bold">{recipe.title}</h4>
-														<p class="text-sm text-gray-600">{recipe.description}</p>
-														<div class="mt-1 flex gap-2 text-xs text-gray-500">
-															<span>⏱️ {recipe.prepTimeMinutes} min</span>
-															<span class="capitalize">🍳 {recipe.difficulty}</span>
-														</div>
-
-														<Button
-															variant="secondary"
-															class="mt-3 w-full"
+												<div class="flex flex-row flex-wrap gap-4">
+													{#each toolInput.recipes as recipe, index (index)}
+														<div
+															class="min-w-60 flex-1 cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:translate-y-1 hover:border-blue-300 hover:shadow-md"
+															in:fly={{ y: 30, duration: 400, delay: index * 50 }}
 															onclick={() => handleRecipeSelection(recipe.title)}
+															onkeydown={(e) =>
+																e.key === 'Enter' && handleRecipeSelection(recipe.title)}
+															tabindex="0"
+															role="button"
 														>
-															Dieses Rezept wählen
-														</Button>
-													</div>
-												{/each}
+															<h4 class="font-bold">{recipe.title}</h4>
+															<p class="text-sm text-gray-600">{recipe.description}</p>
+															<div class="mt-1 flex gap-2 text-xs text-gray-500">
+																<span>⏱️ {recipe.prepTimeMinutes} min</span>
+																<span class="capitalize">🍳 {recipe.difficulty}</span>
+															</div>
+														</div>
+													{/each}
+												</div>
 											</div>
 										{/if}
 									{/if}

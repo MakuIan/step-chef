@@ -3,20 +3,24 @@ import { env } from '$env/dynamic/private';
 import { type RequestHandler } from '@sveltejs/kit';
 import { z } from 'zod';
 import { convertToModelMessages, streamText, tool, type UIMessage } from 'ai';
+import type { Json } from '$lib/database.types';
 
 const google = createGoogleGenerativeAI({
 	apiKey: env.GOOGLE_API_KEY
 });
 
-export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
 		return new Response('Unauthorized', { status: 401 });
 	}
 
-	const { messages, language }: { messages: UIMessage[]; language: 'de' | 'en' } =
-		await request.json();
+	const {
+		messages,
+		language,
+		chatId
+	}: { messages: UIMessage[]; language: 'de' | 'en'; chatId: string } = await request.json();
 
 	const languageInstruction =
 		language === 'de'
@@ -58,8 +62,16 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 						.max(3)
 				})
 			})
+		},
+		async onFinish({ text, toolCalls }) {
+			await supabase.from('chat_messages').insert({
+				chat_id: chatId,
+				role: 'assistant',
+				content: text || 'Rezeptvorschläge generiert',
+				metadata: { toolCalls: toolCalls as unknown as Json }
+			});
 		}
 	});
 
-	return result.toTextStreamResponse();
+	return result.toUIMessageStreamResponse();
 };
