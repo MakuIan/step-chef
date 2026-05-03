@@ -1,5 +1,5 @@
 import { redirect, type Handle } from '@sveltejs/kit';
-import { getTextDirection } from '$lib/paraglide/runtime';
+import { getTextDirection, localizeHref } from '$lib/paraglide/runtime';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { createServerClient } from '@supabase/ssr';
@@ -36,16 +36,13 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.session = session;
 	event.locals.user = session?.user || null;
 
-	const isAuthRoute =
-		event.url.pathname.startsWith('/login') ||
-		event.url.pathname.startsWith('/signup') ||
-		event.url.pathname.startsWith('/auth');
+	const isAuthRoute = /^\/([a-z]{2}\/)?(login|signup|auth)/.test(event.url.pathname);
 
 	if (!session && !isAuthRoute) {
-		throw redirect(303, '/login');
+		throw redirect(303, localizeHref('/dashboard'));
 	}
 	if (session && isAuthRoute && !event.url.pathname.startsWith('/auth/callback')) {
-		throw redirect(303, '/dashboard');
+		throw redirect(303, localizeHref('/dashboard'));
 	}
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {

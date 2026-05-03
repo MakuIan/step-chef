@@ -11,7 +11,7 @@
 		await supabase.auth.signInWithOAuth({
 			provider: provider as 'google' | 'facebook',
 			options: {
-				redirectTo: `/dashboard`
+				redirectTo: `${window.location.origin}/auth/callback`
 			}
 		});
 	}
