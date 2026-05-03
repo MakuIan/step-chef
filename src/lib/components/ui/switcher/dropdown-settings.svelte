@@ -4,10 +4,15 @@
 	import { User, Settings, LogOut, Languages } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { setLocale } from '$lib/paraglide/runtime';
+	import { supabase } from '$lib/supbabaseClient';
 
 	const switchLanguage = (locale: 'de' | 'en') => {
 		setLocale(locale);
 	};
+	async function signOut() {
+		const { error } = await supabase.auth.signOut();
+		console.log(error);
+	}
 </script>
 
 <DropdownMenu.Root>
@@ -41,7 +46,7 @@
 
 		<DropdownMenu.Separator />
 
-		<DropdownMenu.Item class="text-red-600 focus:text-red-600">
+		<DropdownMenu.Item class="text-red-600 focus:text-red-600" onclick={signOut}>
 			<LogOut class="mr-2 h-4 w-4" />
 			<span>{m['dropdown.btn_sign_out']()}</span>
 		</DropdownMenu.Item>

@@ -5,7 +5,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { localizeHref } from '$lib/paraglide/runtime';
 
 export const actions: Actions = {
-	login: async ({ cookies, request }) => {
+	register: async ({ cookies, request }) => {
 		const data = await request.formData();
 		const email = data.get('email') as string;
 		const password = data.get('password') as string;
@@ -22,13 +22,14 @@ export const actions: Actions = {
 				}
 			}
 		});
-		const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-			email: email,
-			password: password
+
+		const { data: authData, error: authError } = await supabase.auth.signUp({
+			email,
+			password
 		});
 
 		if (authError) {
-			console.error('Login error:', authError);
+			console.error('Registration error:', authError);
 			return fail(400, { error: authError.message });
 		}
 

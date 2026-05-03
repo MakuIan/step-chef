@@ -58,7 +58,7 @@
 		</Card.Header>
 
 		<Card.Content class="space-y-4">
-			<form action="?/login">
+			<form action="?/login" method="POST">
 				<div class="space-y-2">
 					<Label for="email">Email</Label>
 					<Input id="email" name="email" type="email" placeholder={m['auth.email_placeholder']()} />
@@ -72,7 +72,7 @@
 						placeholder={m['auth.password_placeholder']()}
 					/>
 				</div>
-				<Button class="w-full">
+				<Button class="w-full" type="submit">
 					{m['auth.sign_in']()}
 				</Button>
 			</form>

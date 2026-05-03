@@ -1,8 +1,8 @@
 <script>
-	import LanguageSwitcher from '../switcher/language-switcher.svelte';
+	import DropdownSettings from '../switcher/dropdown-settings.svelte';
 </script>
 
 <header class="flex justify-between">
 	<div>StepChef Logo Placeholder</div>
-	<LanguageSwitcher />
+	<DropdownSettings />
 </header>

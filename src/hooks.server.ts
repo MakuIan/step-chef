@@ -39,7 +39,7 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	const isAuthRoute = /^\/([a-z]{2}\/)?(login|signup|auth)/.test(event.url.pathname);
 
 	if (!session && !isAuthRoute) {
-		throw redirect(303, localizeHref('/dashboard'));
+		throw redirect(303, localizeHref('/login'));
 	}
 	if (session && isAuthRoute && !event.url.pathname.startsWith('/auth/callback')) {
 		throw redirect(303, localizeHref('/dashboard'));
