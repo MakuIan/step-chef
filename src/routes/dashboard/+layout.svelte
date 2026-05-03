@@ -3,7 +3,7 @@
 	import AppHeader from '$lib/components/ui/header/app-header.svelte';
 	import type { Snippet } from 'svelte';
 	import type { PageData } from './$types';
-	import { Menu } from '@lucide/svelte';
+	import { Menu } from 'lucide-svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
 
 	interface Props {

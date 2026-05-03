@@ -24,6 +24,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession, s
 
 	return {
 		chat: chat ?? null,
+
 		chatMessagesError: chatMessagesError ? m['fetch_errors.chat_messages_fetch_error']() : null
 	};
 };

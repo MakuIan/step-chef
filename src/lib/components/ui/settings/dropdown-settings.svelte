@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Button } from '$lib/components/ui/button';
-	import { User, Settings, LogOut, Languages } from '@lucide/svelte';
+	import { User, Settings, LogOut, Languages } from 'lucide-svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeHref, setLocale } from '$lib/paraglide/runtime';
 	import { enhance } from '$app/forms';

@@ -1,5 +1,5 @@
 <script>
-	import DropdownMenu from '../dropdown-menu/dropdown-menu.svelte';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 </script>
 
 <DropdownMenu.Root></DropdownMenu.Root>

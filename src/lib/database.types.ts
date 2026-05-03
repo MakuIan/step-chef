@@ -20,7 +20,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
-          image_url: string | null
+          image_urls: string[] | null
+          metadata: Json
           role: string
         }
         Insert: {
@@ -28,7 +29,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
-          image_url?: string | null
+          image_urls?: string[] | null
+          metadata?: Json
           role: string
         }
         Update: {
@@ -36,7 +38,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
-          image_url?: string | null
+          image_urls?: string[] | null
+          metadata?: Json
           role?: string
         }
         Relationships: [
@@ -72,33 +75,39 @@ export type Database = {
       }
       recipes: {
         Row: {
+          active_timer_ends_at: string | null
           created_at: string
           current_step: number
           id: string
           language: string
           original_chat_id: string | null
+          status_text: string
           steps: Json
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          active_timer_ends_at?: string | null
           created_at?: string
           current_step?: number
           id?: string
           language?: string
           original_chat_id?: string | null
+          status_text: string
           steps: Json
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          active_timer_ends_at?: string | null
           created_at?: string
           current_step?: number
           id?: string
           language?: string
           original_chat_id?: string | null
+          status_text?: string
           steps?: Json
           title?: string
           updated_at?: string
