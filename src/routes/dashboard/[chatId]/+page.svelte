@@ -4,17 +4,22 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Card, CardContent } from '$lib/components/ui/card';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { page } from '$app/state';
 	import { fly } from 'svelte/transition';
 	import { DefaultChatTransport } from 'ai';
 
+	const chatId = page.params.chatId;
 	const chat = new Chat({
 		transport: new DefaultChatTransport({
 			api: '/api/chat',
 			body: {
-				chatId: 'your-current-chat-id'
+				chatId: chatId,
+				language: 'de'
 			}
 		})
 	});
+
+	$inspect(chat.status);
 
 	let inputValue = $state('');
 
@@ -31,19 +36,6 @@
 			text: `Ich wähle: ${selectedRecipeTitle}. Bitte erstelle das genaue Kochrezept mit allen Schritten und Timern.`
 		});
 	}
-
-	type RecipeSuggestionArgs = {
-		recipes: {
-			title: string;
-			prepTimeMinutes: number;
-			difficulty: 'easy' | 'medium' | 'hard';
-			description: string;
-			ingredients: {
-				name: string;
-				menge: string;
-			}[];
-		}[];
-	};
 </script>
 
 <div class="flex h-screen max-h-screen flex-col bg-gray-50">
@@ -51,11 +43,11 @@
 	<main class="flex-1 space-y-4 overflow-y-auto p-4 pb-24">
 		{#each chat.messages as message (message.id)}
 			<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} w-full">
-				<div class="max-w-[80%]">
+				<div class="max-w-[90%]">
 					{#if message.role === 'user'}
 						<div class="rounded-2xl rounded-tr-sm bg-blue-600 px-4 py-2 text-white shadow-sm">
 							<!-- Loop through parts for user messages -->
-							{#each message.parts as part, index (index)}
+							{#each message.parts as part}
 								{#if part.type === 'text'}
 									{part.text}
 								{/if}
@@ -71,27 +63,33 @@
 									{#if part.type === 'text'}
 										<p class="text-gray-800">{part.text}</p>
 									{/if}
-									{#if 'toolName' in part && part.toolName === 'suggest_recipes'}
-										{@const toolInput = part.input as RecipeSuggestionArgs}
 
-										<!-- 2. Render Tool Calls (Your Recipes!) -->
-										{#if toolInput && toolInput.recipes}
-											<div class="mt-2 flex flex-col gap-2">
+									<!-- 2. The Correct way to catch Tool Invocations in the new SDK -->
+									{#if part.type === 'tool-invocation' && part.toolInvocation.toolName === 'suggest_recipes'}
+										<!-- Extract the recipes array from the 'args' property -->
+										{@const recipes = part.toolInvocation.args.recipes}
+
+										{#if recipes && recipes.length > 0}
+											<div class="mt-2 flex flex-col gap-3">
 												<p class="text-sm font-semibold text-gray-500">Vorgeschlagene Rezepte:</p>
+
+												<!-- Animated Flex Row -->
 												<div class="flex flex-row flex-wrap gap-4">
-													{#each toolInput.recipes as recipe, index (index)}
+													{#each recipes as recipe, recipeIndex (recipe.title)}
 														<div
-															class="min-w-60 flex-1 cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:translate-y-1 hover:border-blue-300 hover:shadow-md"
-															in:fly={{ y: 30, duration: 400, delay: index * 50 }}
+															class="min-w-60 flex-1 cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+															in:fly={{ y: 30, duration: 400, delay: recipeIndex * 150 }}
 															onclick={() => handleRecipeSelection(recipe.title)}
 															onkeydown={(e) =>
 																e.key === 'Enter' && handleRecipeSelection(recipe.title)}
 															tabindex="0"
 															role="button"
 														>
-															<h4 class="font-bold">{recipe.title}</h4>
-															<p class="text-sm text-gray-600">{recipe.description}</p>
-															<div class="mt-1 flex gap-2 text-xs text-gray-500">
+															<h4 class="text-lg font-bold text-gray-900">{recipe.title}</h4>
+															<p class="mt-1 mb-3 text-sm text-gray-600">{recipe.description}</p>
+															<div
+																class="mt-1 flex items-center gap-3 text-xs font-medium text-gray-500"
+															>
 																<span>⏱️ {recipe.prepTimeMinutes} min</span>
 																<span class="capitalize">🍳 {recipe.difficulty}</span>
 															</div>
@@ -123,7 +121,7 @@
 		<form onsubmit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
 			<Input
 				bind:value={inputValue}
-				placeholder="What do you want to cook today?"
+				placeholder="Was möchtest du kochen?"
 				class="flex-1"
 				disabled={chat.status === 'streaming' || chat.status === 'submitted'}
 			/>
@@ -131,7 +129,7 @@
 				type="submit"
 				disabled={chat.status === 'streaming' || chat.status === 'submitted' || !inputValue.trim()}
 			>
-				Send
+				Senden
 			</Button>
 		</form>
 	</div>

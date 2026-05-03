@@ -28,7 +28,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			: 'Always respond in English. All recipe titles, descriptions, and ingredients must be in English.';
 
 	const result = streamText({
-		model: google('gemini-3.1-flash-lite-preview'),
+		model: google('gemini-2.5-flash'),
 		messages: await convertToModelMessages(messages),
 		system: `Du bist ein professioneller, aber freundlicher Familien-Koch für die App 'Step-Chef'. 
 				${languageInstruction}
