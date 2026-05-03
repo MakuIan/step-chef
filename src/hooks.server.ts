@@ -36,12 +36,14 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.session = session;
 	event.locals.user = session?.user || null;
 
-	const isAuthRoute = /^\/([a-z]{2}\/)?(login|signup|auth)/.test(event.url.pathname);
+	const isPublicRoute = /^\/([a-z]{2}\/)?(login|signup|auth|waiting_for_email_confirmation)/.test(
+		event.url.pathname
+	);
 
-	if (!session && !isAuthRoute) {
+	if (!session && !isPublicRoute) {
 		throw redirect(303, localizeHref('/login'));
 	}
-	if (session && isAuthRoute && !event.url.pathname.startsWith('/auth/callback')) {
+	if (session && isPublicRoute && !event.url.pathname.startsWith('/auth/callback')) {
 		throw redirect(303, localizeHref('/dashboard'));
 	}
 	return resolve(event, {

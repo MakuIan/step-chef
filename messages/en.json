@@ -17,5 +17,9 @@
 		"btn_sign_out": "Sign Out",
 		"settings": "Settings",
 		"language": "Language"
+	},
+	"email_confirmation": {
+		"title": "Confirm your email",
+		"description": "We've sent you a verification link. Please check your inbox and click the link to activate your account."
 	}
 }

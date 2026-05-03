@@ -15,5 +15,9 @@
 		"btn_sign_out": "Abmelden",
 		"settings": "Einstellungen",
 		"language": "Sprache"
+	},
+	"email_confirmation": {
+		"title": "E-Mail-Adresse bestätigen",
+		"description": "Wir haben Ihnen einen Bestätigungslink gesendet. Bitte überprüfen Sie Ihren Posteingang und klicken Sie auf den Link, um Ihr Konto zu aktivieren."
 	}
 }

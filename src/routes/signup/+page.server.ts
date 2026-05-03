@@ -5,7 +5,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { localizeHref } from '$lib/paraglide/runtime';
 
 export const actions: Actions = {
-	register: async ({ cookies, request }) => {
+	register: async ({ cookies, request, url }) => {
 		const data = await request.formData();
 		const email = data.get('email') as string;
 		const password = data.get('password') as string;
@@ -25,7 +25,10 @@ export const actions: Actions = {
 
 		const { data: authData, error: authError } = await supabase.auth.signUp({
 			email,
-			password
+			password,
+			options: {
+				emailRedirectTo: `${url.origin}/auth/confirm`
+			}
 		});
 
 		if (authError) {
@@ -33,6 +36,6 @@ export const actions: Actions = {
 			return fail(400, { error: authError.message });
 		}
 
-		throw redirect(303, localizeHref('/dashboard'));
+		throw redirect(303, localizeHref('/waiting_for_email_confirmation'));
 	}
 };
