@@ -1,8 +1,8 @@
 <script>
-	import DropdownSettings from '../switcher/dropdown-settings.svelte';
+	import DropdownSettings from '../settings/dropdown-settings.svelte';
 </script>
 
-<header class="flex justify-between">
+<div class="flex justify-between">
 	<div>StepChef Logo Placeholder</div>
 	<DropdownSettings />
-</header>
+</div>

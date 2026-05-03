@@ -21,5 +21,9 @@
 	"email_confirmation": {
 		"title": "Confirm your email",
 		"description": "We've sent you a verification link. Please check your inbox and click the link to activate your account."
+	},
+	"fetch_errors": {
+		"chat_history_fetch_error": "We couldn't load your chat history right now.",
+		"chat_messages_fetch_error": "We couldn't load the chat messages right now."
 	}
 }

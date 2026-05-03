@@ -29,12 +29,28 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		}
 	});
 
-	const {
-		data: { session }
-	} = await event.locals.supabase.auth.getSession();
+	event.locals.safeGetSession = async () => {
+		const {
+			data: { session }
+		} = await event.locals.supabase.auth.getSession();
 
-	event.locals.session = session;
-	event.locals.user = session?.user || null;
+		if (!session) {
+			return { session: null, user: null };
+		}
+
+		const {
+			data: { user },
+			error
+		} = await event.locals.supabase.auth.getUser();
+
+		if (error) {
+			return { session: null, user: null };
+		}
+
+		return { session, user };
+	};
+
+	const { session } = await event.locals.safeGetSession();
 
 	const isPublicRoute = /^\/([a-z]{2}\/)?(login|signup|auth|waiting_for_email_confirmation)/.test(
 		event.url.pathname

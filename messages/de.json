@@ -19,5 +19,9 @@
 	"email_confirmation": {
 		"title": "E-Mail-Adresse bestätigen",
 		"description": "Wir haben Ihnen einen Bestätigungslink gesendet. Bitte überprüfen Sie Ihren Posteingang und klicken Sie auf den Link, um Ihr Konto zu aktivieren."
+	},
+	"fetch_errors": {
+		"chat_history_fetch_error": "Wir konnten Ihre Chat-Verläufe gerade nicht laden.",
+		"chat_messages_fetch_error": "Wir konnten die Chat-Nachrichten gerade nicht laden."
 	}
 }
