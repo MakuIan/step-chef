@@ -1,12 +1,12 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"app_title": "StepChef",
-	"login": {
+	"auth": {
 		"welcome": "Willkommen bei StepChef",
 		"email_placeholder": "koch@haushalt.de",
 		"password_placeholder": "passwort",
 		"sign_in": "Anmelden",
-		"sign_up": "Registieren",
+		"sign_up": "Registrieren",
 		"to_sign_up": "Noch kein Konto? Hier registrieren",
 		"to_sign_in": "Bereits ein Konto? Hier anmelden"
 	},
