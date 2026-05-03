@@ -65,7 +65,6 @@
 			</div>
 
 			<div class="flex-1 overflow-y-auto p-4 pt-16 md:p-8 md:pt-16">
-				Chat PlaceHolder
 				{@render children()}
 			</div>
 		</section>

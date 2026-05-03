@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession, s
 	const { data: chat, error: chatMessagesError } = await supabase
 		.from('chat_messages')
 		.select('*')
-		.eq('id', params.chatId)
+		.eq('chat_id', params.chatId)
 		.single();
 
 	if (chatMessagesError) {

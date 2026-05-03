@@ -15,7 +15,7 @@
 		})
 	});
 
-	let inputValue = '';
+	let inputValue = $state('');
 
 	function handleFormSubmit(e: Event) {
 		e.preventDefault();
@@ -118,7 +118,7 @@
 
 	<!-- Chat Input Bar -->
 	<div class="fixed right-0 bottom-0 left-0 border-t bg-white p-4">
-		<form on:submit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
+		<form onsubmit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
 			<Input
 				bind:value={inputValue}
 				placeholder="What do you want to cook today?"
