@@ -1,9 +1,8 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { env } from '$env/dynamic/private';
-import { redirect, type RequestHandler } from '@sveltejs/kit';
-import { localizeHref } from '$lib/paraglide/runtime';
+import { type RequestHandler } from '@sveltejs/kit';
 import { z } from 'zod';
-import { streamText, tool } from 'ai';
+import { convertToModelMessages, streamText, tool, type UIMessage } from 'ai';
 
 const google = createGoogleGenerativeAI({
 	apiKey: env.GOOGLE_API_KEY
@@ -16,10 +15,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		return new Response('Unauthorized', { status: 401 });
 	}
 
-	const { messages, language } = (await request.json()) as {
-		messages: any[];
-		language: 'de' | 'en';
-	};
+	const { messages, language }: { messages: UIMessage[]; language: 'de' | 'en' } =
+		await request.json();
 
 	const languageInstruction =
 		language === 'de'
@@ -28,7 +25,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 
 	const result = streamText({
 		model: google('gemini-3.1-flash-lite-preview'),
-		messages,
+		messages: await convertToModelMessages(messages),
 		system: `Du bist ein professioneller, aber freundlicher Familien-Koch für die App 'Step-Chef'. 
 				${languageInstruction}
                  Wenn der User nach etwas zu essen fragt oder Zutaten/Bilder schickt, 
@@ -37,8 +34,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			suggest_recipes: tool({
 				description:
 					'Schlägt 1 bis 3 Rezepte basierend auf den Zutaten oder Wünschen des Users vor.',
-				// @ts-expect-error
-				parameters: z.object({
+				inputSchema: z.object({
 					recipes: z
 						.array(
 							z.object({
@@ -48,7 +44,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 								description: z
 									.string()
 									.describe('Eine kurze Beschreibung des Gerichts (1-2 Sätze)'),
-								zutaten: z
+								ingredients: z
 									.array(
 										z.object({
 											name: z.string().describe('Name der Zutat, z.B. Mehl'),
