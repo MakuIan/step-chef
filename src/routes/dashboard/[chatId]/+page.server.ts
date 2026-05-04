@@ -11,11 +11,11 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession, s
 		throw redirect(300, localizeHref('/login'));
 	}
 
-	const { data: chat, error: chatMessagesError } = await supabase
+	const { data: messages, error: chatMessagesError } = await supabase
 		.from('chat_messages')
 		.select('*')
 		.eq('chat_id', params.chatId)
-		.single();
+		.order('created_at', { ascending: true });
 
 	if (chatMessagesError) {
 		console.error('Failed to fetch chat messages:', params.chatId, chatMessagesError);
@@ -23,8 +23,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession, s
 	}
 
 	return {
-		chat: chat ?? null,
-
+		messages: messages ?? [],
 		chatMessagesError: chatMessagesError ? m['fetch_errors.chat_messages_fetch_error']() : null
 	};
 };
