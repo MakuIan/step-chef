@@ -23,6 +23,28 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		chatId
 	}: { messages: UIMessage[]; language: 'de' | 'en'; chatId: string } = await request.json();
 
+	const latestMessage = messages[messages.length - 1];
+	if (latestMessage && latestMessage.role === 'user') {
+		let extractedContent = '';
+		if (latestMessage.parts && latestMessage.parts.length > 0) {
+			const textPart = latestMessage.parts.find((p: any) => p.type === 'text');
+			if (textPart) extractedContent = textPart.text;
+		}
+		if (!extractedContent) {
+			// @ts-expect-error - Fallback mapping
+			extractedContent = latestMessage.content || latestMessage.text || '';
+		}
+		const { error: insertError } = await supabase.from('chat_messages').insert({
+			chat_id: chatId,
+			role: 'user',
+			content: extractedContent
+		});
+
+		if (insertError) {
+			console.error('Failed to save user message:', insertError);
+		}
+	}
+
 	const languageInstruction =
 		language === 'de'
 			? 'Antworte IMMER auf Deutsch. Alle Rezepttitel, Beschreibungen und Zutaten müssen in deutscher Sprache sein.'
@@ -33,18 +55,15 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		messages: await convertToModelMessages(messages),
 		stopWhen: (event) => event.steps.length >= 5,
 		system: `Du bist ein professioneller, aber freundlicher Familien-Koch für die App 'Step-Chef'. 
-				Du MUSST zwingend das Tool 'suggest_recipes' aufrufen, um die Optionen bereitzustellen.
-				WICHTIG: Wenn der User nach Rezepten fragt, DARFST DU DIE REZEPTE NICHT ALS TEXT AUFLISTEN.
-				Der Text-Teil deiner Antwort sollte nur eine kurze, freundliche Einleitung sein.
+				WICHTIG: Wenn der User nach Rezepten fragt, DARFST DU DIE REZEPTE ODER ZUTATEN NIEMALS ALS TEXT AUFLISTEN!
+				Der Text-Teil deiner Antwort darf IMMER nur eine extrem kurze Einleitung sein.
 				${languageInstruction}
-                 Wenn der User nach etwas zu essen fragt oder Zutaten/Bilder schickt, 
-				 Gib immer die Art des Kochgeschirrs an (z.B. Wok, beschichtete Pfanne) und ob ein Deckel genutzt wird.
-                 MUSST du das Tool 'suggest_recipes' nutzen, um 1 bis 3 Rezeptvorschläge zu machen.
+                 Wenn der User nach etwas zu essen fragt, MUSST du das Tool 'suggest_recipes' nutzen, um 1 bis 3 Rezeptvorschläge zu machen.
 				 WICHTIG FÜR REZEPTE:
 				- Nutze immer Mengenangaben, Minuten und Herdstufen (dein Herd hat 1-9 Stufen).
 				- Gib immer die Art des Kochgeschirrs an (z.B. Wok, beschichtete Pfanne) und ob ein Deckel genutzt wird.
-				- Wenn ein Rezept ausgewählt wurde, nutze das Tool 'provide_full_recipe'`,
-		toolChoice: 'required',
+				- Wenn der User ein Rezept auswählt, MUSST DU ZWINGEND das Tool 'provide_full_recipe' aufrufen! Schreibe die Details niemals als einfachen Chat-Text.`,
+		toolChoice: 'auto',
 		tools: {
 			suggest_recipes: tool({
 				description:
@@ -89,10 +108,25 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 						})
 					)
 				}),
-				execute: async () => ({ status: 'success', message: 'Rezept wurde geladen' })
+				execute: async (args) => {
+					const { error: recipeError } = await supabase.from('recipes').insert({
+						user_id: user.id,
+						original_chat_id: chatId,
+						title: args.title,
+						language: language,
+						status_text: 'Erstellt',
+						current_step: 0,
+						steps: args.steps as unknown as Json
+					});
+					if (recipeError) {
+						console.log('DB Insert Error (recipes table):', recipeError);
+					}
+					return { status: 'success', message: 'Rezept wurde geladen und in DB gespeichert' };
+				}
 			})
 		},
-		async onFinish({ text, toolCalls }) {
+		async onFinish(result) {
+			const { text, toolCalls } = result;
 			await supabase.from('chat_messages').insert({
 				chat_id: chatId,
 				role: 'assistant',
@@ -105,8 +139,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			});
 		}
 	});
-
-	console.log('result', result);
 
 	return result.toUIMessageStreamResponse();
 };

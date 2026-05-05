@@ -3,51 +3,91 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Card, CardContent } from '$lib/components/ui/card';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { page } from '$app/state';
 	import { fly, slide } from 'svelte/transition';
 	import { DefaultChatTransport, type UIMessage } from 'ai';
-
-	const chatId = page.params.chatId;
 	let { data } = $props();
-	const initialMessages: UIMessage[] = data.messages.map((msg: any) => ({
-		id: msg.id,
-		role: msg.role,
-		parts: [
-			{
-				type: 'text',
-				text: msg.content
-			},
-			...(msg.metadata?.toolCalls?.map((tc: any) => ({
-				type: 'tool-invocation',
-				toolInvocation: {
-					state: 'result',
-					toolCallId: tc.id,
-					toolName: tc.function.name,
-					args:
-						typeof tc.function.arguments === 'string'
-							? JSON.parse(tc.function.arguments)
-							: tc.function.arguments,
-					result: { status: 'success' }
-				}
-			})) || [])
-		]
-	}));
 
-	const chat = new Chat({
-		messages: initialMessages,
-		transport: new DefaultChatTransport({
-			api: '/api/chat',
-			body: {
-				chatId: chatId,
-				language: 'de'
+	// type DatabaseMessage = {
+	// 	id: string;
+	// 	role: 'user' | 'assistant' | 'system' | 'data';
+	// 	content: string;
+	// 	metadata?: {
+	// 		toolCalls?: Array<{
+	// 			toolCallId: string;
+	// 			toolName: string;
+	// 			args: Record<string, any>;
+	// 		}>;
+	// 	};
+	// };
+
+	function getInitialMessages(msgs: any[]): UIMessage[] {
+		return msgs.map((msg) => {
+			const metadata = msg.metadata as
+				| {
+						toolCalls?: Array<{
+							toolCallId: string;
+							toolName: string;
+							args: any;
+						}>;
+				  }
+				| null
+				| undefined;
+
+			const parts: any[] = [];
+			if (msg.content && msg.content.trim() !== '') {
+				parts.push({
+					type: 'text',
+					text: msg.content
+				});
 			}
-		})
+
+			const toolParts =
+				metadata?.toolCalls?.map((tc) => {
+					const parsedArgs = typeof tc.args === 'string' ? JSON.parse(tc.args) : tc.args || {};
+					return {
+						type: `tool-${tc.toolName}` as any,
+						toolCallId: tc.toolCallId,
+						state: 'output-available',
+						input: parsedArgs,
+						output: { status: 'success' }
+					};
+				}) || [];
+
+			parts.push(...toolParts);
+
+			return {
+				id: msg.id,
+				role: msg.role as 'user' | 'assistant' | 'system' | 'data',
+				parts: parts
+			};
+		}) as UIMessage[];
+	}
+
+	function createChatInstance(messages: any[], currentChatId: string) {
+		console.log(`messages:${messages} with type ${typeof messages}`);
+		return new Chat({
+			messages: getInitialMessages(messages),
+			transport: new DefaultChatTransport({
+				api: '/api/chat',
+				body: {
+					chatId: currentChatId,
+					language: 'de'
+				}
+			})
+		});
+	}
+
+	let chat = $state(createChatInstance(data.messages, page.params.chatId as string));
+	$effect(() => {
+		chat = createChatInstance(data.messages, page.params.chatId as string);
 	});
 
-	const isStart = page.url.searchParams.get('start') === 'true';
+	let shouldAutoStart = $state(page.url.searchParams.get('start') === 'true');
 	$effect(() => {
-		if (isStart && chat.messages.length > 0 && chat.status === 'ready') {
+		if (shouldAutoStart && chat.messages.length > 0 && chat.status === 'ready') {
+			shouldAutoStart = false;
+
 			const url = new URL(window.location.href);
 			url.searchParams.delete('start');
 			window.history.replaceState({}, '', url);
@@ -57,19 +97,18 @@
 	});
 
 	let inputValue = $state('');
-	let activeRecipe = $state<any>(null);
 	let currentStepIndex = $state(0);
 
 	function handleFormSubmit(e: Event) {
 		e.preventDefault();
-		console.log('1. Formular abgeschickt!'); // <--- TEST LOG
+		console.log('1. Formular abgeschickt!');
 
 		if (!inputValue.trim()) {
 			console.log('Abbruch: Input leer');
 			return;
 		}
 
-		console.log('2. Sende Nachricht an API...'); // <--- TEST LOG
+		console.log('2. Sende Nachricht an API...');
 		chat.sendMessage({ text: inputValue });
 		inputValue = '';
 	}
@@ -79,6 +118,7 @@
 			text: `Ich wähle: ${selectedRecipeTitle}. Bitte erstelle das genaue Kochrezept mit allen Schritten und Timern.`
 		});
 	}
+
 	function startTimer(minutes: number) {
 		alert(`Timer gestartet: ${minutes} Minuten`);
 		// TODO Implement timer logic
@@ -86,14 +126,6 @@
 </script>
 
 <div class="flex h-screen max-h-screen flex-col bg-gray-50">
-	{#if chat.messages.length > 0}
-		<details class="mt-4 rounded border border-red-200 bg-red-50 p-2 font-mono text-[10px]">
-			<summary class="cursor-pointer font-bold text-red-700">DEBUG: Last Message Raw Data</summary>
-			<pre>{JSON.stringify(chat.messages)}</pre>
-		</details>
-	{/if}
-	<!-- Chat History Area -->
-
 	<main class="flex-1 overflow-y-auto p-4 pb-24">
 		{#each chat.messages as message (message.id)}
 			<div class="mb-4 flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
@@ -106,10 +138,11 @@
 										<p>{part.text}</p>
 									{/if}
 
-									<!-- TOOL 1: Rezeptvorschläge (Flex-Row & Animation) -->
-									{#if part.type === 'tool-invocation' && part.toolInvocation.toolName === 'suggest_recipes'}
+									<!-- Added (recipe.title) as the key here -->
+									{#if part.type === 'tool-suggest_recipes' && (part.state === 'input-available' || part.state === 'output-available')}
 										<div class="mt-4 flex flex-row flex-wrap gap-4">
-											{#each part.toolInvocation.args.recipes as recipe, i}
+											<!-- Added ?. and || [] -->
+											{#each part.input?.recipes || [] as recipe, i (recipe.title)}
 												<button
 													in:fly={{ y: 20, delay: i * 100 }}
 													onclick={() => handleRecipeSelection(recipe.title)}
@@ -123,57 +156,68 @@
 										</div>
 									{/if}
 
-									<!-- TOOL 2: Full Recipe Rendering -->
-									{#if part.type === 'tool-invocation' && part.toolInvocation.toolName === 'provide_full_recipe'}
-										{@const recipe = part.toolInvocation.args}
-										<div class="mt-4 space-y-4" in:slide>
-											<h3 class="text-xl font-bold">{recipe.title}</h3>
+									{#if part.type === 'tool-provide_full_recipe' && (part.state === 'input-available' || part.state === 'output-available')}
+										{@const recipe = part.input}
+										<!-- Safeguard: Only render if recipe actually has a title -->
+										{#if recipe?.title}
+											<div class="mt-4 space-y-4" in:slide>
+												<h3 class="text-xl font-bold">{recipe.title}</h3>
 
-											<!-- Zutaten Liste -->
-											<div class="rounded-lg bg-blue-50 p-3">
-												<h4 class="mb-1 font-semibold">Zutaten:</h4>
-												<ul class="text-sm">
-													{#each recipe.ingredients as ing}
-														<li>• {ing.menge} {ing.name}</li>
-													{/each}
-												</ul>
-											</div>
+												<div class="rounded-lg bg-blue-50 p-3">
+													<h4 class="mb-1 font-semibold">Zutaten:</h4>
+													<ul class="text-sm">
+														<!-- Added ?. and || [] -->
+														{#each recipe?.ingredients || [] as ingredient, index (index)}
+															<li>• {ingredient.menge} {ingredient.name}</li>
+														{/each}
+													</ul>
+												</div>
 
-											<!-- Step-by-Step Tracker -->
-											<div class="space-y-2">
-												{#each recipe.steps as step, index}
-													<div
-														class="rounded-lg border p-3 {currentStepIndex === index
-															? 'border-blue-500 bg-blue-50'
-															: 'opacity-50'}"
-													>
-														<div class="flex items-start justify-between">
-															<span class="font-bold">Schritt {index + 1}</span>
-															{#if step.timerMinutes}
-																<Button
-																	size="sm"
-																	variant="outline"
-																	onclick={() => startTimer(step.timerMinutes)}
-																>
-																	⏲ {step.timerMinutes} Min starten
+												<!-- Step-by-Step Tracker -->
+												<div class="space-y-2">
+													<!-- Added ?. and || [] for safety -->
+													{#each recipe?.steps || [] as step, index (index)}
+														<div
+															class="rounded-lg border p-3 {currentStepIndex === index
+																? 'border-blue-500 bg-blue-50'
+																: 'opacity-50'}"
+														>
+															<div class="flex items-start justify-between">
+																<span class="font-bold">Schritt {index + 1}</span>
+																{#if step?.timerMinutes}
+																	<Button
+																		size="sm"
+																		variant="outline"
+																		onclick={() => startTimer(step.timerMinutes)}
+																	>
+																		⏲ {step.timerMinutes} Min starten
+																	</Button>
+																{/if}
+															</div>
+
+															<!-- Safely render instruction with a fallback while streaming -->
+															<p class="my-2 text-sm">{step?.instruction || 'Lade Anweisung...'}</p>
+
+															<div class="flex gap-2 text-xs text-gray-600">
+																{#if step?.equipment}<span>🍳 {step.equipment}</span>{/if}
+																{#if step?.heatLevel}<span>🔥 Stufe: {step.heatLevel}</span>{/if}
+
+																<!-- Only check hasLid if it has actually streamed in -->
+																{#if step?.hasLid !== undefined}
+																	<span>{step.hasLid ? '🥘 Mit Deckel' : '🍳 Ohne Deckel'}</span>
+																{/if}
+															</div>
+
+															{#if currentStepIndex === index && step?.instruction}
+																<Button class="mt-2 w-full" onclick={() => currentStepIndex++}>
+																	Schritt erledigt
 																</Button>
 															{/if}
 														</div>
-														<p class="my-2 text-sm">{step.instruction}</p>
-														<div class="flex gap-2 text-xs text-gray-600">
-															<span>🍳 {step.equipment}</span>
-															{#if step.heatLevel}<span>🔥 Stufe: {step.heatLevel}</span>{/if}
-															<span>{step.hasLid ? '🥘 Mit Deckel' : '🍳 Ohne Deckel'}</span>
-														</div>
-														{#if currentStepIndex === index}
-															<Button class="mt-2 w-full" onclick={() => currentStepIndex++}>
-																Schritt erledigt
-															</Button>
-														{/if}
-													</div>
-												{/each}
+													{/each}
+												</div>
 											</div>
-										</div>
+										{/if}
 									{/if}
 								{/each}
 							</CardContent>
@@ -182,12 +226,35 @@
 
 					{#if message.role === 'user'}
 						<div class="rounded-2xl rounded-tr-none bg-blue-600 p-3 text-white">
-							{message.parts[0].text}
+							{#if message.parts.length > 0 && message.parts[0].type === 'text'}
+								{message.parts[0].text}
+							{/if}
 						</div>
 					{/if}
 				</div>
 			</div>
 		{/each}
+		{#if chat.status === 'submitted' || chat.status === 'streaming'}
+			<div class="mb-4 flex justify-start">
+				<div class="max-w-[90%]">
+					<Card>
+						<CardContent class="flex items-center gap-3 p-4 text-gray-500">
+							<!-- Bouncing Dots Animation using Tailwind -->
+							<div class="flex space-x-1.5">
+								<div
+									class="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]"
+								></div>
+								<div
+									class="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s]"
+								></div>
+								<div class="h-2 w-2 animate-bounce rounded-full bg-gray-400"></div>
+							</div>
+							<span class="text-sm font-medium">Step-Chef überlegt...</span>
+						</CardContent>
+					</Card>
+				</div>
+			</div>
+		{/if}
 	</main>
 
 	<!-- Chat Input Bar -->
