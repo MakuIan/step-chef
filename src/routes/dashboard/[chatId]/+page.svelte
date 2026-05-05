@@ -28,7 +28,7 @@
 						toolCalls?: Array<{
 							toolCallId: string;
 							toolName: string;
-							args: any;
+							input?: any;
 						}>;
 				  }
 				| null
@@ -44,7 +44,7 @@
 
 			const toolParts =
 				metadata?.toolCalls?.map((tc) => {
-					const parsedArgs = typeof tc.args === 'string' ? JSON.parse(tc.args) : tc.args || {};
+					const parsedArgs = typeof tc.input === 'string' ? JSON.parse(tc.input) : tc.input || {};
 					return {
 						type: `tool-${tc.toolName}` as any,
 						toolCallId: tc.toolCallId,
@@ -223,7 +223,7 @@
 							</CardContent>
 						</Card>
 					{/if}
-
+					<!-- User Messages -->
 					{#if message.role === 'user'}
 						<div class="rounded-2xl rounded-tr-none bg-blue-600 p-3 text-white">
 							{#if message.parts.length > 0 && message.parts[0].type === 'text'}
@@ -234,6 +234,7 @@
 				</div>
 			</div>
 		{/each}
+		<!-- StepChef thinking -->
 		{#if chat.status === 'submitted' || chat.status === 'streaming'}
 			<div class="mb-4 flex justify-start">
 				<div class="max-w-[90%]">

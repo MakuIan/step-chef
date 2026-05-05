@@ -126,16 +126,18 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			})
 		},
 		async onFinish(result) {
-			const { text, toolCalls } = result;
+			const { text, toolCalls, steps } = result;
+			const allToolCalls = steps ? steps.flatMap((step) => step.toolCalls) : toolCalls || [];
+			console.log('allToolCalls', allToolCalls);
 			await supabase.from('chat_messages').insert({
 				chat_id: chatId,
 				role: 'assistant',
 				content:
 					text ||
-					(toolCalls?.[0]?.toolName === 'suggest_recipes'
+					(allToolCalls?.[0]?.toolName === 'suggest_recipes'
 						? 'Vorschläge generiert'
 						: 'Rezept erstellt'),
-				metadata: { toolCalls: toolCalls as unknown as Json }
+				metadata: { toolCalls: allToolCalls as unknown as Json }
 			});
 		}
 	});
