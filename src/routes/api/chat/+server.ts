@@ -1,7 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { GOOGLE_API_KEY } from '$env/static/private';
 import { type RequestHandler } from '@sveltejs/kit';
-import { z } from 'zod';
+import { suggestRecipesInputSchema, fullRecipeInputSchema } from '$lib/schemas.ts';
 import { convertToModelMessages, streamText, tool, type UIMessage } from 'ai';
 import type { Json } from '$lib/database.types';
 
@@ -68,46 +68,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			suggest_recipes: tool({
 				description:
 					'Schlägt 1 bis 3 Rezepte basierend auf den Zutaten oder Wünschen des Users vor.',
-				inputSchema: z.object({
-					recipes: z
-						.array(
-							z.object({
-								title: z.string().describe('Der Name des Rezepts'),
-								prepTimeMinutes: z.number().describe('Die geschätzte Dauer in Minuten'),
-								difficulty: z.enum(['easy', 'medium', 'hard']).describe('Schwierigkeitsgrad'),
-								description: z
-									.string()
-									.describe('Eine kurze Beschreibung des Gerichts (1-2 Sätze)'),
-								ingredients: z
-									.array(
-										z.object({
-											name: z.string().describe('Name der Zutat, z.B. Mehl'),
-											menge: z.string().describe('Menge und Einheit, z.B. 500g oder 2 EL')
-										})
-									)
-									.describe('Eine Liste der Hauptzutaten für die Rezeptvorschau')
-							})
-						)
-						.min(1)
-						.max(3)
-				}),
+				inputSchema: suggestRecipesInputSchema,
 				execute: async () => ({ status: 'success', message: 'Rezepte wurden dem User angezeigt' })
 			}),
 			provide_full_recipe: tool({
 				description: 'Gibt das detaillierte Rezept mit Einzelschritten aus.',
-				inputSchema: z.object({
-					title: z.string(),
-					ingredients: z.array(z.object({ name: z.string(), menge: z.string() })),
-					steps: z.array(
-						z.object({
-							instruction: z.string(),
-							timerMinutes: z.number().optional(),
-							heatLevel: z.number().min(1).max(9).optional(),
-							equipment: z.string(),
-							hasLid: z.boolean()
-						})
-					)
-				}),
+				inputSchema: fullRecipeInputSchema,
 				execute: async (args) => {
 					const { error: recipeError } = await supabase.from('recipes').insert({
 						user_id: user.id,

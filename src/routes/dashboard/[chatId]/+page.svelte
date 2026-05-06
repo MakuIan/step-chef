@@ -6,6 +6,9 @@
 	import { page } from '$app/state';
 	import { fly, slide } from 'svelte/transition';
 	import { DefaultChatTransport, type UIMessage } from 'ai';
+	import type { FullRecipeInput, SuggestRecipesInput } from '$lib/schemas.js';
+	import { supabase } from '$lib/supbabaseClient';
+	import type { Database } from '$lib/database.types.js';
 	let { data } = $props();
 
 	// type DatabaseMessage = {
@@ -20,7 +23,12 @@
 	// 		}>;
 	// 	};
 	// };
-
+	function getSuggestRecipesInput(input: any): SuggestRecipesInput {
+		return input as SuggestRecipesInput;
+	}
+	function getFullRecipeInput(input: any): FullRecipeInput {
+		return input as FullRecipeInput;
+	}
 	function getInitialMessages(msgs: any[]): UIMessage[] {
 		return msgs.map((msg) => {
 			const metadata = msg.metadata as
@@ -98,6 +106,93 @@
 
 	let inputValue = $state('');
 	let currentStepIndex = $state(0);
+	let currentRecipeId = $state<string | null>(null);
+	let timerEndsAt = $state<string | null>(null);
+	let remainingTime = $state<string | null>(null);
+
+	// Effect for fetching initial state and setting up Realtime subscription
+	$effect(() => {
+		async function fetchActiveRecipe() {
+			const { data: recipe } = await supabase
+				.from('recipes')
+				.select('*')
+				.eq('original_chat_id', page.params.chatId)
+				.order('created_at', { ascending: false })
+				.limit(1)
+				.single();
+
+			if (recipe) {
+				currentRecipeId = recipe.id;
+				currentStepIndex = recipe.current_step;
+				timerEndsAt = recipe.active_timer_ends_at;
+			}
+		}
+
+		fetchActiveRecipe();
+
+		const channel = supabase
+			.channel('recipe_sync')
+			.on(
+				'postgres_changes',
+				{
+					event: '*',
+					schema: 'public',
+					table: 'recipes',
+					filter: `original_chat_id=eq.${page.params.chatId}`
+				},
+				(payload) => {
+					if (payload.new as Database['public']['Tables']['recipes']['Row']) {
+						const recipe = payload.new as Database['public']['Tables']['recipes']['Row'];
+						currentRecipeId = recipe.id;
+						currentStepIndex = recipe.current_step;
+						timerEndsAt = recipe.active_timer_ends_at;
+					}
+				}
+			)
+			.subscribe();
+
+		return () => {
+			supabase.removeChannel(channel);
+		};
+	});
+
+	// Effect for Handle the countdown timer logic dynamically
+	$effect(() => {
+		if (!timerEndsAt) {
+			remainingTime = null;
+			return;
+		}
+
+		const interval = setInterval(() => {
+			const now = new Date().getTime();
+			const end = new Date(timerEndsAt as string).getTime();
+			const distance = end - now;
+
+			if (distance <= 0) {
+				clearInterval(interval);
+				remainingTime = '00:00 (Fertig!)';
+			} else {
+				const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+				const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+				remainingTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+			}
+		}, 1000);
+
+		return () => clearInterval(interval);
+	});
+
+	async function updateStep(newIndex: number) {
+		currentStepIndex = newIndex;
+		if (currentRecipeId) {
+			await supabase
+				.from('recipes')
+				.update({
+					current_step: newIndex,
+					active_timer_ends_at: null
+				})
+				.eq('id', currentRecipeId);
+		}
+	}
 
 	function handleFormSubmit(e: Event) {
 		e.preventDefault();
@@ -119,9 +214,15 @@
 		});
 	}
 
-	function startTimer(minutes: number) {
-		alert(`Timer gestartet: ${minutes} Minuten`);
-		// TODO Implement timer logic
+	async function startTimer(minutes: number) {
+		const endsAt = new Date(Date.now() + minutes * 60000).toISOString();
+		timerEndsAt = endsAt;
+		if (currentRecipeId) {
+			await supabase
+				.from('recipes')
+				.update({ active_timer_ends_at: endsAt })
+				.eq('id', currentRecipeId);
+		}
 	}
 </script>
 
@@ -140,13 +241,14 @@
 
 									<!-- Added (recipe.title) as the key here -->
 									{#if part.type === 'tool-suggest_recipes' && (part.state === 'input-available' || part.state === 'output-available')}
+										{@const inputData = getSuggestRecipesInput(part.input)}
 										<div class="mt-4 flex flex-row flex-wrap gap-4">
 											<!-- Added ?. and || [] -->
-											{#each part.input?.recipes || [] as recipe, i (recipe.title)}
+											{#each inputData.recipes || [] as recipe, i (recipe.title)}
 												<button
 													in:fly={{ y: 20, delay: i * 100 }}
 													onclick={() => handleRecipeSelection(recipe.title)}
-													class="min-w-[200px] flex-1 rounded-xl border bg-white p-4 text-left transition-all hover:shadow-lg"
+													class="min-w-50 flex-1 rounded-xl border bg-white p-4 text-left transition-all hover:shadow-lg"
 												>
 													<h4 class="font-bold">{recipe.title}</h4>
 													<p class="text-sm text-gray-500">{recipe.description}</p>
@@ -157,7 +259,7 @@
 									{/if}
 
 									{#if part.type === 'tool-provide_full_recipe' && (part.state === 'input-available' || part.state === 'output-available')}
-										{@const recipe = part.input}
+										{@const recipe = getFullRecipeInput(part.input)}
 										<!-- Safeguard: Only render if recipe actually has a title -->
 										{#if recipe?.title}
 											<div class="mt-4 space-y-4" in:slide>
@@ -176,22 +278,32 @@
 												<!-- Step-by-Step Tracker -->
 												<div class="space-y-2">
 													<!-- Added ?. and || [] for safety -->
-													{#each recipe?.steps || [] as step, index (index)}
+													{#each recipe?.steps || [] as step, stepIndex (stepIndex)}
 														<div
-															class="rounded-lg border p-3 {currentStepIndex === index
+															class="rounded-lg border p-3 {currentStepIndex === stepIndex
 																? 'border-blue-500 bg-blue-50'
 																: 'opacity-50'}"
 														>
 															<div class="flex items-start justify-between">
 																<span class="font-bold">Schritt {index + 1}</span>
 																{#if step?.timerMinutes}
-																	<Button
-																		size="sm"
-																		variant="outline"
-																		onclick={() => startTimer(step.timerMinutes)}
-																	>
-																		⏲ {step.timerMinutes} Min starten
-																	</Button>
+																	<div class="flex items-center gap-2">
+																		{#if currentStepIndex === stepIndex && remainingTime}
+																			<span class="font-mono font-bold text-blue-600">
+																				{remainingTime}
+																			</span>
+																		{/if}
+																		<Button
+																			size="sm"
+																			variant="outline"
+																			onclick={() => {
+																				if (step.timerMinutes) startTimer(step.timerMinutes);
+																			}}
+																			disabled={currentStepIndex !== stepIndex}
+																		>
+																			⏲ {step.timerMinutes} Min starten
+																		</Button>
+																	</div>
 																{/if}
 															</div>
 
@@ -208,8 +320,11 @@
 																{/if}
 															</div>
 
-															{#if currentStepIndex === index && step?.instruction}
-																<Button class="mt-2 w-full" onclick={() => currentStepIndex++}>
+															{#if currentStepIndex === stepIndex && step?.instruction}
+																<Button
+																	class="mt-2 w-full"
+																	onclick={() => updateStep(stepIndex + 1)}
+																>
 																	Schritt erledigt
 																</Button>
 															{/if}
