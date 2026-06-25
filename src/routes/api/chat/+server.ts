@@ -1,17 +1,20 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { GOOGLE_API_KEY } from '$env/static/private';
+import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { type RequestHandler } from '@sveltejs/kit';
-import { suggestRecipesInputSchema, fullRecipeInputSchema } from '$lib/schemas.ts';
+import { suggestRecipesInputSchema, fullRecipeInputSchema } from '$lib/schemas';
 import { convertToModelMessages, streamText, tool, type UIMessage } from 'ai';
-import type { Json } from '$lib/database.types';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../convex/_generated/api';
 
 const google = createGoogleGenerativeAI({
 	apiKey: GOOGLE_API_KEY
 });
 
-export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
+const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
+
+export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 	console.log('🚀 API Route /api/chat wurde aufgerufen!');
-	const { user } = await safeGetSession();
 
 	if (!user) {
 		return new Response('Unauthorized', { status: 401 });
@@ -28,19 +31,19 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		let extractedContent = '';
 		if (latestMessage.parts && latestMessage.parts.length > 0) {
 			const textPart = latestMessage.parts.find((p: any) => p.type === 'text');
-			if (textPart) extractedContent = textPart.text;
+			if (textPart && textPart.type === 'text') extractedContent = textPart.text;
 		}
 		if (!extractedContent) {
 			// @ts-expect-error - Fallback mapping
 			extractedContent = latestMessage.content || latestMessage.text || '';
 		}
-		const { error: insertError } = await supabase.from('chat_messages').insert({
-			chat_id: chatId,
-			role: 'user',
-			content: extractedContent
-		});
-
-		if (insertError) {
+		try {
+			await convex.mutation(api.chat.insertMessage, {
+				chatId,
+				role: 'user',
+				content: extractedContent
+			});
+		} catch (insertError) {
 			console.error('Failed to save user message:', insertError);
 		}
 	}
@@ -75,17 +78,19 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				description: 'Gibt das detaillierte Rezept mit Einzelschritten aus.',
 				inputSchema: fullRecipeInputSchema,
 				execute: async (args) => {
-					const { error: recipeError } = await supabase.from('recipes').insert({
-						user_id: user.id,
-						original_chat_id: chatId,
-						title: args.title,
-						language: language,
-						status_text: 'Erstellt',
-						current_step: 0,
-						steps: args.steps as unknown as Json
-					});
-					if (recipeError) {
-						console.log('DB Insert Error (recipes table):', recipeError);
+					try {
+						await convex.mutation(api.chat.insertRecipe, {
+							userId: user.id,
+							userEmail: user.email,
+							originalChatId: chatId,
+							title: args.title,
+							language: language,
+							statusText: 'Erstellt',
+							currentStep: 0,
+							steps: args.steps
+						});
+					} catch (recipeError) {
+						console.log('DB Insert Error (recipes table via Convex):', recipeError);
 					}
 					return { status: 'success', message: 'Rezept wurde geladen und in DB gespeichert' };
 				}
@@ -95,18 +100,23 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			const { text, toolCalls, steps } = result;
 			const allToolCalls = steps ? steps.flatMap((step) => step.toolCalls) : toolCalls || [];
 			console.log('allToolCalls', allToolCalls);
-			await supabase.from('chat_messages').insert({
-				chat_id: chatId,
-				role: 'assistant',
-				content:
-					text ||
-					(allToolCalls?.[0]?.toolName === 'suggest_recipes'
-						? 'Vorschläge generiert'
-						: 'Rezept erstellt'),
-				metadata: { toolCalls: allToolCalls as unknown as Json }
-			});
+			try {
+				await convex.mutation(api.chat.insertMessage, {
+					chatId,
+					role: 'assistant',
+					content:
+						text ||
+						(allToolCalls?.[0]?.toolName === 'suggest_recipes'
+							? 'Vorschläge generiert'
+							: 'Rezept erstellt'),
+					metadata: { toolCalls: allToolCalls }
+				});
+			} catch (err) {
+				console.error('Failed to save assistant message:', err);
+			}
 		}
 	});
 
 	return result.toUIMessageStreamResponse();
 };
+

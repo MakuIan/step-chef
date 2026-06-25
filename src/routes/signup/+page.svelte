@@ -5,6 +5,35 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as m from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
+	import { localizeHref } from '$lib/paraglide/runtime';
+	import { authClient } from '$lib/auth-client';
+
+	let email = $state('');
+	let password = $state('');
+	let errorMessage = $state('');
+	let loading = $state(false);
+
+	async function handleRegister(e: SubmitEvent) {
+		e.preventDefault();
+		loading = true;
+		errorMessage = '';
+
+		const { data, error } = await authClient.signUp.email({
+			email,
+			password,
+			name: email.split('@')[0],
+			callbackURL: localizeHref('/dashboard')
+		});
+
+		loading = false;
+		if (error) {
+			console.error('Registration error:', error);
+			errorMessage = error.message || 'Registrierung fehlgeschlagen';
+		} else {
+			await goto(resolve(localizeHref('/waiting_for_email_confirmation')));
+		}
+	}
 </script>
 
 <main class="flex items-center justify-center p-4">
@@ -19,10 +48,13 @@
 		</Card.Header>
 
 		<Card.Content class="space-y-4">
-			<form action="?/register" method="POST">
+			<form onsubmit={handleRegister}>
+				{#if errorMessage}
+					<div class="text-sm text-red-500 mb-2">{errorMessage}</div>
+				{/if}
 				<div class="space-y-2">
 					<Label for="email">Email</Label>
-					<Input id="email" name="email" type="email" placeholder={m['auth.email_placeholder']()} />
+					<Input id="email" name="email" type="email" bind:value={email} placeholder={m['auth.email_placeholder']()} required />
 				</div>
 				<div class="space-y-2">
 					<Label for="password">Password</Label>
@@ -30,11 +62,17 @@
 						id="password"
 						name="password"
 						type="password"
+						bind:value={password}
 						placeholder={m['auth.password_placeholder']()}
+						required
 					/>
 				</div>
-				<Button class="w-full" type="submit">
-					{m['auth.sign_up']()}
+				<Button class="w-full" type="submit" disabled={loading}>
+					{#if loading}
+						Lade...
+					{:else}
+						{m['auth.sign_up']()}
+					{/if}
 				</Button>
 			</form>
 			<Card.Footer>
