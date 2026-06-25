@@ -196,5 +196,40 @@ export const updateRecipe = mutation({
   },
 });
 
+/**
+ * Updates the title of an existing chat session.
+ */
+export const updateTitle = mutation({
+  args: { 
+    chatId: v.id("chats"), 
+    title: v.string() 
+  },
+  handler: async (ctx, args) => {
+    const trimmedTitle = args.title.trim();
+    if (!trimmedTitle) {
+      throw new Error("Chat title cannot be empty");
+    }
 
+    await ctx.db.patch(args.chatId, { title: trimmedTitle });
+    return { success: true };
+  },
+});
 
+/**
+ * Deletes a chat session from the database.
+ */
+export const deleteChat = mutation({
+  args: { 
+    chatId: v.id("chats") 
+  },
+  handler: async (ctx, args) => {
+    // Fetch the chat to ensure it exists before trying to delete
+    const chat = await ctx.db.get(args.chatId);
+    if (!chat) {
+      throw new Error("Chat not found");
+    }
+
+    await ctx.db.delete(args.chatId);
+    return { success: true };
+  },
+});
