@@ -1,9 +1,10 @@
 import { redirect, type Handle } from '@sveltejs/kit';
 import { getTextDirection, localizeHref } from '$lib/paraglide/runtime';
 import { paraglideMiddleware } from '$lib/paraglide/server';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { createServerClient } from '@supabase/ssr';
 import { sequence } from '@sveltejs/kit/hooks';
+import { auth } from '$lib/auth';
+import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { building } from '$app/environment';
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
@@ -18,55 +19,29 @@ const handleParaglide: Handle = ({ event, resolve }) =>
 	});
 
 const handleAuth: Handle = async ({ event, resolve }) => {
-	event.locals.supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
-		cookies: {
-			getAll: () => event.cookies.getAll(),
-			setAll: (cookiesToSet) => {
-				cookiesToSet.forEach(({ name, value, options }) => {
-					event.cookies.set(name, value, { ...options, path: '/' });
-				});
-			}
-		}
+	// Retrieve user session
+	const session = await auth.api.getSession({
+		headers: event.request.headers
 	});
 
-	event.locals.safeGetSession = async () => {
-		const {
-			data: { session }
-		} = await event.locals.supabase.auth.getSession();
+	event.locals.user = session?.user || null;
+	event.locals.session = session?.session || null;
 
-		if (!session) {
-			return { session: null, user: null };
-		}
-
-		const {
-			data: { user },
-			error
-		} = await event.locals.supabase.auth.getUser();
-
-		if (error) {
-			return { session: null, user: null };
-		}
-
-		return { session, user };
-	};
-
-	const { session } = await event.locals.safeGetSession();
-
-	const isPublicRoute = /^\/([a-z]{2}\/)?(login|signup|auth|waiting_for_email_confirmation)/.test(
+	const isAuthApi = event.url.pathname.startsWith('/api/auth');
+	const isPublicRoute = /^\/([a-z]{2}\/)?(login|signup|waiting_for_email_confirmation)/.test(
 		event.url.pathname
 	);
 
-	if (!session && !isPublicRoute) {
+	if (!session && !isPublicRoute && !isAuthApi) {
 		throw redirect(303, localizeHref('/login'));
 	}
-	if (session && isPublicRoute && !event.url.pathname.startsWith('/auth/callback')) {
+
+	if (session && isPublicRoute) {
 		throw redirect(303, localizeHref('/dashboard'));
 	}
-	return resolve(event, {
-		filterSerializedResponseHeaders(name) {
-			return name === 'content-range' || name === 'x-supabase-api-version';
-		}
-	});
+
+	return svelteKitHandler({ event, resolve, auth, building });
 };
 
 export const handle: Handle = sequence(handleParaglide, handleAuth);
+
