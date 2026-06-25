@@ -20,7 +20,7 @@ export default defineSchema({
     chatId: v.id("chats"),
     content: v.string(),
     imageUrls: v.optional(v.array(v.string())),
-    metadata: v.any(), // Flexible JSON metadata
+    metadata: v.optional(v.any()), // Flexible JSON metadata
     role: v.string(), // e.g. "user", "assistant"
   }).index("by_chat_id", ["chatId"]),
 

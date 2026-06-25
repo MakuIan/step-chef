@@ -4,7 +4,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as m from '$lib/paraglide/messages';
-	import { resolve } from '$app/paths';
+
 	import { goto } from '$app/navigation';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { authClient } from '$lib/auth-client';
@@ -30,7 +30,7 @@
 			console.error('Login error:', error);
 			errorMessage = error.message || 'Login fehlgeschlagen';
 		} else {
-			await goto(resolve(localizeHref('/dashboard')));
+			await goto(localizeHref('/dashboard'));
 		}
 	}
 
@@ -121,7 +121,7 @@
 			<Card.Footer>
 				<p class="text-sm text-muted-foreground">
 					{m['auth.to_sign_up']()}
-					<a href={resolve('/signup')} class="font-medium text-primary hover:underline">
+					<a href={localizeHref('/signup')} class="font-medium text-primary hover:underline">
 						Sign up
 					</a>
 				</p>

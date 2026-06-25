@@ -1,4 +1,5 @@
-import { mutation, QueryCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 
 // Helper function to resolve user by email or ID string
@@ -20,6 +21,21 @@ async function getConvexUser(ctx: QueryCtx, email?: string, userId?: string) {
   throw new Error("User not found");
 }
 
+// Helper function for mutations to get or lazily create a Convex user by email
+async function getOrCreateConvexUser(ctx: any, email: string, name?: string) {
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_email", (q: any) => q.eq("email", email))
+    .first();
+  if (user) return user._id;
+
+  const newUserDbId = await ctx.db.insert("users", {
+    email,
+    name: name || email.split("@")[0],
+  });
+  return newUserDbId;
+}
+
 export const insertMessage = mutation({
   args: {
     chatId: v.string(),
@@ -37,7 +53,7 @@ export const insertMessage = mutation({
       chatId,
       role: args.role,
       content: args.content,
-      metadata: args.metadata,
+      metadata: args.metadata ?? {},
     });
     return messageId;
   },
@@ -58,7 +74,9 @@ export const insertRecipe = mutation({
     steps: v.any(),
   },
   handler: async (ctx, args) => {
-    const userDbId = await getConvexUser(ctx, args.userEmail, args.userId);
+    const userDbId = args.userEmail
+      ? await getOrCreateConvexUser(ctx, args.userEmail)
+      : await getConvexUser(ctx, undefined, args.userId);
 
     let originalChatId = undefined;
     if (args.originalChatId) {
@@ -67,7 +85,7 @@ export const insertRecipe = mutation({
 
     const recipeId = await ctx.db.insert("recipes", {
       userId: userDbId,
-      originalChatId,
+      originalChatId: originalChatId,
       title: args.title,
       language: args.language,
       statusText: args.statusText,
@@ -78,3 +96,105 @@ export const insertRecipe = mutation({
     return recipeId;
   },
 });
+
+export const getChatsForUser = query({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) {
+      return [];
+    }
+    return await ctx.db
+      .query("chats")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .collect();
+  },
+});
+
+export const createChat = mutation({
+  args: {
+    email: v.string(),
+    title: v.string(),
+    initialMessage: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userDbId = await getOrCreateConvexUser(ctx, args.email);
+    const chatId = await ctx.db.insert("chats", {
+      userId: userDbId,
+      title: args.title,
+    });
+    if (args.initialMessage) {
+      await ctx.db.insert("chatMessages", {
+        chatId,
+        role: "user",
+        content: args.initialMessage,
+        metadata: {},
+      });
+    }
+    return chatId;
+  },
+});
+
+export const getMessages = query({
+  args: {
+    chatId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const chatDbId = ctx.db.normalizeId("chats", args.chatId);
+    if (!chatDbId) {
+      return [];
+    }
+    return await ctx.db
+      .query("chatMessages")
+      .withIndex("by_chat_id", (q) => q.eq("chatId", chatDbId))
+      .collect();
+  },
+});
+
+export const getActiveRecipe = query({
+  args: {
+    chatId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const chatDbId = ctx.db.normalizeId("chats", args.chatId);
+    if (!chatDbId) {
+      return null;
+    }
+    const recipe = await ctx.db
+      .query("recipes")
+      .withIndex("by_original_chat_id", (q) => q.eq("originalChatId", chatDbId))
+      .order("desc")
+      .first();
+    return recipe;
+  },
+});
+
+export const updateRecipe = mutation({
+  args: {
+    recipeId: v.string(),
+    currentStep: v.optional(v.number()),
+    activeTimerEndsAt: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, args) => {
+    const recipeId = ctx.db.normalizeId("recipes", args.recipeId);
+    if (!recipeId) {
+      throw new Error(`Invalid recipeId: ${args.recipeId}`);
+    }
+    const updates: any = { updatedAt: Date.now() };
+    if (args.currentStep !== undefined) {
+      updates.currentStep = args.currentStep;
+    }
+    if (args.activeTimerEndsAt !== undefined) {
+      updates.activeTimerEndsAt = args.activeTimerEndsAt ?? undefined;
+    }
+    await ctx.db.patch(recipeId, updates);
+  },
+});
+
+
+

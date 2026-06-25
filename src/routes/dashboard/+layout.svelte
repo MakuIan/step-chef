@@ -6,6 +6,7 @@
 	import { Menu } from 'lucide-svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
 
+
 	interface Props {
 		children: Snippet;
 		data: PageData;
@@ -45,9 +46,9 @@
 			<div class="flex w-full min-w-50 flex-col">
 				<Button class="mb-4 w-full" href={localizeHref('/dashboard')}>New Recipe</Button>
 				<ul class="flex flex-col gap-2 overflow-y-auto">
-					{#each data.chats as chat (chat.id)}
+					{#each data.chats as chat (chat._id)}
 						<li class="cursor-pointer truncate rounded-md p-2 transition-colors hover:bg-muted">
-							<a href={localizeHref(`/dashboard/${chat.id}`)}>
+							<a href={localizeHref(`/dashboard/${chat._id}`)}>
 								{chat.title}
 							</a>
 						</li>

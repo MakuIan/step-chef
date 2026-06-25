@@ -4,7 +4,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as m from '$lib/paraglide/messages';
-	import { resolve } from '$app/paths';
+
 	import { goto } from '$app/navigation';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { authClient } from '$lib/auth-client';
@@ -31,7 +31,7 @@
 			console.error('Registration error:', error);
 			errorMessage = error.message || 'Registrierung fehlgeschlagen';
 		} else {
-			await goto(resolve(localizeHref('/waiting_for_email_confirmation')));
+			await goto(localizeHref('/waiting_for_email_confirmation'));
 		}
 	}
 </script>
@@ -78,7 +78,7 @@
 			<Card.Footer>
 				<p class="text-sm text-muted-foreground">
 					{m['auth.to_sign_in']()}
-					<a href={resolve('/login')} class="font-medium text-primary hover:underline"> Sign in </a>
+					<a href={localizeHref('/login')} class="font-medium text-primary hover:underline"> Sign in </a>
 				</p>
 			</Card.Footer>
 		</Card.Content>
