@@ -4,15 +4,40 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as m from '$lib/paraglide/messages';
-	import { resolve } from '$app/paths';
-	import { supabase } from '$lib/supbabaseClient';
+
+	import { goto } from '$app/navigation';
+	import { localizeHref } from '$lib/paraglide/runtime';
+	import { authClient } from '$lib/auth-client';
+
+	let email = $state('');
+	let password = $state('');
+	let errorMessage = $state('');
+	let loading = $state(false);
+
+	async function handleLogin(e: SubmitEvent) {
+		e.preventDefault();
+		loading = true;
+		errorMessage = '';
+
+		const { data, error } = await authClient.signIn.email({
+			email,
+			password,
+			callbackURL: localizeHref('/dashboard')
+		});
+
+		loading = false;
+		if (error) {
+			console.error('Login error:', error);
+			errorMessage = error.message || 'Login fehlgeschlagen';
+		} else {
+			await goto(localizeHref('/dashboard'));
+		}
+	}
 
 	async function signInWithProvider(provider: string) {
-		await supabase.auth.signInWithOAuth({
+		await authClient.signIn.social({
 			provider: provider as 'google' | 'facebook',
-			options: {
-				redirectTo: `${window.location.origin}/auth/callback`
-			}
+			callbackURL: localizeHref('/dashboard')
 		});
 	}
 </script>
@@ -58,10 +83,13 @@
 		</Card.Header>
 
 		<Card.Content class="space-y-4">
-			<form action="?/login" method="POST">
+			<form onsubmit={handleLogin}>
+				{#if errorMessage}
+					<div class="text-sm text-red-500 mb-2">{errorMessage}</div>
+				{/if}
 				<div class="space-y-2">
 					<Label for="email">Email</Label>
-					<Input id="email" name="email" type="email" placeholder={m['auth.email_placeholder']()} />
+					<Input id="email" name="email" type="email" bind:value={email} placeholder={m['auth.email_placeholder']()} required />
 				</div>
 				<div class="space-y-2">
 					<Label for="password">Password</Label>
@@ -69,11 +97,17 @@
 						id="password"
 						name="password"
 						type="password"
+						bind:value={password}
 						placeholder={m['auth.password_placeholder']()}
+						required
 					/>
 				</div>
-				<Button class="w-full" type="submit">
-					{m['auth.sign_in']()}
+				<Button class="w-full" type="submit" disabled={loading}>
+					{#if loading}
+						Lade...
+					{:else}
+						{m['auth.sign_in']()}
+					{/if}
 				</Button>
 			</form>
 			<section>
@@ -87,7 +121,7 @@
 			<Card.Footer>
 				<p class="text-sm text-muted-foreground">
 					{m['auth.to_sign_up']()}
-					<a href={resolve('/signup')} class="font-medium text-primary hover:underline">
+					<a href={localizeHref('/signup')} class="font-medium text-primary hover:underline">
 						Sign up
 					</a>
 				</p>

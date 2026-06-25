@@ -1,29 +1,25 @@
-import { redirect } from '@sveltejs/kit';
+import { redirect, error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { localizeHref } from '$lib/paraglide/runtime';
-import * as m from '$lib/paraglide/messages';
-import { error } from 'console';
+import { ConvexHttpClient } from 'convex/browser';
+import { PUBLIC_CONVEX_URL } from '$env/static/public';
+import { api } from '../../../../convex/_generated/api';
 
-export const load: PageServerLoad = async ({ params, locals: { safeGetSession, supabase } }) => {
-	const { user } = await safeGetSession();
+const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
+export const load: PageServerLoad = async ({ params, locals: { user } }) => {
 	if (!user) {
 		throw redirect(300, localizeHref('/login'));
 	}
 
-	const { data: messages, error: chatMessagesError } = await supabase
-		.from('chat_messages')
-		.select('*')
-		.eq('chat_id', params.chatId)
-		.order('created_at', { ascending: true });
-
-	if (chatMessagesError) {
-		console.error('Failed to fetch chat messages:', params.chatId, chatMessagesError);
+	try {
+		const messages = await convex.query(api.chat.getMessages, { chatId: params.chatId });
+		return {
+			messages: messages ?? [],
+			chatMessagesError: null
+		};
+	} catch (err) {
+		console.error('Failed to fetch chat messages:', params.chatId, err);
 		throw error(404, 'Chat not found');
 	}
-
-	return {
-		messages: messages ?? [],
-		chatMessagesError: chatMessagesError ? m['fetch_errors.chat_messages_fetch_error']() : null
-	};
 };

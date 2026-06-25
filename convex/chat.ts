@@ -1,0 +1,200 @@
+import { mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
+import { v } from "convex/values";
+
+// Helper function to resolve user by email or ID string
+async function getConvexUser(ctx: QueryCtx, email?: string, userId?: string) {
+  if (userId) {
+    const parsedId = ctx.db.normalizeId("users", userId);
+    if (parsedId) {
+      const user = await ctx.db.get(parsedId);
+      if (user) return user._id;
+    }
+  }
+  if (email) {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    if (user) return user._id;
+  }
+  throw new Error("User not found");
+}
+
+// Helper function for mutations to get or lazily create a Convex user by email
+async function getOrCreateConvexUser(ctx: any, email: string, name?: string) {
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_email", (q: any) => q.eq("email", email))
+    .first();
+  if (user) return user._id;
+
+  const newUserDbId = await ctx.db.insert("users", {
+    email,
+    name: name || email.split("@")[0],
+  });
+  return newUserDbId;
+}
+
+export const insertMessage = mutation({
+  args: {
+    chatId: v.string(),
+    role: v.string(),
+    content: v.string(),
+    metadata: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const chatId = ctx.db.normalizeId("chats", args.chatId);
+    if (!chatId) {
+      throw new Error(`Invalid chatId: ${args.chatId}`);
+    }
+
+    const messageId = await ctx.db.insert("chatMessages", {
+      chatId,
+      role: args.role,
+      content: args.content,
+      metadata: args.metadata ?? {},
+    });
+    return messageId;
+  },
+});
+
+// Alias to support either casing
+export const insertmessage = insertMessage;
+
+export const insertRecipe = mutation({
+  args: {
+    userId: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
+    originalChatId: v.optional(v.string()),
+    title: v.string(),
+    language: v.string(),
+    statusText: v.string(),
+    currentStep: v.number(),
+    steps: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const userDbId = args.userEmail
+      ? await getOrCreateConvexUser(ctx, args.userEmail)
+      : await getConvexUser(ctx, undefined, args.userId);
+
+    let originalChatId = undefined;
+    if (args.originalChatId) {
+      originalChatId = ctx.db.normalizeId("chats", args.originalChatId) ?? undefined;
+    }
+
+    const recipeId = await ctx.db.insert("recipes", {
+      userId: userDbId,
+      originalChatId: originalChatId,
+      title: args.title,
+      language: args.language,
+      statusText: args.statusText,
+      currentStep: args.currentStep,
+      steps: args.steps,
+      updatedAt: Date.now(),
+    });
+    return recipeId;
+  },
+});
+
+export const getChatsForUser = query({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) {
+      return [];
+    }
+    return await ctx.db
+      .query("chats")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .collect();
+  },
+});
+
+export const createChat = mutation({
+  args: {
+    email: v.string(),
+    title: v.string(),
+    initialMessage: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userDbId = await getOrCreateConvexUser(ctx, args.email);
+    const chatId = await ctx.db.insert("chats", {
+      userId: userDbId,
+      title: args.title,
+    });
+    if (args.initialMessage) {
+      await ctx.db.insert("chatMessages", {
+        chatId,
+        role: "user",
+        content: args.initialMessage,
+        metadata: {},
+      });
+    }
+    return chatId;
+  },
+});
+
+export const getMessages = query({
+  args: {
+    chatId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const chatDbId = ctx.db.normalizeId("chats", args.chatId);
+    if (!chatDbId) {
+      return [];
+    }
+    return await ctx.db
+      .query("chatMessages")
+      .withIndex("by_chat_id", (q) => q.eq("chatId", chatDbId))
+      .collect();
+  },
+});
+
+export const getActiveRecipe = query({
+  args: {
+    chatId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const chatDbId = ctx.db.normalizeId("chats", args.chatId);
+    if (!chatDbId) {
+      return null;
+    }
+    const recipe = await ctx.db
+      .query("recipes")
+      .withIndex("by_original_chat_id", (q) => q.eq("originalChatId", chatDbId))
+      .order("desc")
+      .first();
+    return recipe;
+  },
+});
+
+export const updateRecipe = mutation({
+  args: {
+    recipeId: v.string(),
+    currentStep: v.optional(v.number()),
+    activeTimerEndsAt: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, args) => {
+    const recipeId = ctx.db.normalizeId("recipes", args.recipeId);
+    if (!recipeId) {
+      throw new Error(`Invalid recipeId: ${args.recipeId}`);
+    }
+    const updates: any = { updatedAt: Date.now() };
+    if (args.currentStep !== undefined) {
+      updates.currentStep = args.currentStep;
+    }
+    if (args.activeTimerEndsAt !== undefined) {
+      updates.activeTimerEndsAt = args.activeTimerEndsAt ?? undefined;
+    }
+    await ctx.db.patch(recipeId, updates);
+  },
+});
+
+
+

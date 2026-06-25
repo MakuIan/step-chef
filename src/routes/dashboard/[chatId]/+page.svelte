@@ -7,8 +7,9 @@
 	import { fly, slide } from 'svelte/transition';
 	import { DefaultChatTransport, type UIMessage } from 'ai';
 	import type { FullRecipeInput, SuggestRecipesInput } from '$lib/schemas.js';
-	import { supabase } from '$lib/supbabaseClient';
-	import type { Database } from '$lib/database.types.js';
+	import { ConvexClient } from 'convex/browser';
+	import { PUBLIC_CONVEX_URL } from '$env/static/public';
+	import { api } from '../../../../convex/_generated/api';
 	let { data } = $props();
 
 	// type DatabaseMessage = {
@@ -65,7 +66,7 @@
 			parts.push(...toolParts);
 
 			return {
-				id: msg.id,
+				id: msg._id || msg.id,
 				role: msg.role as 'user' | 'assistant' | 'system' | 'data',
 				parts: parts
 			};
@@ -110,50 +111,23 @@
 	let timerEndsAt = $state<string | null>(null);
 	let remainingTime = $state<string | null>(null);
 
-	// Effect for fetching initial state and setting up Realtime subscription
+	const convexClient = new ConvexClient(PUBLIC_CONVEX_URL);
+
+	// Effect for fetching initial state and setting up Realtime subscription via Convex
 	$effect(() => {
-		async function fetchActiveRecipe() {
-			const { data: recipe } = await supabase
-				.from('recipes')
-				.select('*')
-				.eq('original_chat_id', page.params.chatId)
-				.order('created_at', { ascending: false })
-				.limit(1)
-				.single();
-
-			if (recipe) {
-				currentRecipeId = recipe.id;
-				currentStepIndex = recipe.current_step;
-				timerEndsAt = recipe.active_timer_ends_at;
-			}
-		}
-
-		fetchActiveRecipe();
-
-		const channel = supabase
-			.channel('recipe_sync')
-			.on(
-				'postgres_changes',
-				{
-					event: '*',
-					schema: 'public',
-					table: 'recipes',
-					filter: `original_chat_id=eq.${page.params.chatId}`
-				},
-				(payload) => {
-					if (payload.new as Database['public']['Tables']['recipes']['Row']) {
-						const recipe = payload.new as Database['public']['Tables']['recipes']['Row'];
-						currentRecipeId = recipe.id;
-						currentStepIndex = recipe.current_step;
-						timerEndsAt = recipe.active_timer_ends_at;
-					}
+		const unsubscribe = convexClient.onUpdate(
+			api.chat.getActiveRecipe,
+			{ chatId: page.params.chatId as string },
+			(recipe) => {
+				if (recipe) {
+					currentRecipeId = recipe._id;
+					currentStepIndex = recipe.currentStep;
+					timerEndsAt = recipe.activeTimerEndsAt ?? null;
 				}
-			)
-			.subscribe();
+			}
+		);
 
-		return () => {
-			supabase.removeChannel(channel);
-		};
+		return unsubscribe;
 	});
 
 	// Effect for Handle the countdown timer logic dynamically
@@ -184,13 +158,11 @@
 	async function updateStep(newIndex: number) {
 		currentStepIndex = newIndex;
 		if (currentRecipeId) {
-			await supabase
-				.from('recipes')
-				.update({
-					current_step: newIndex,
-					active_timer_ends_at: null
-				})
-				.eq('id', currentRecipeId);
+			await convexClient.mutation(api.chat.updateRecipe, {
+				recipeId: currentRecipeId,
+				currentStep: newIndex,
+				activeTimerEndsAt: null
+			});
 		}
 	}
 
@@ -218,10 +190,10 @@
 		const endsAt = new Date(Date.now() + minutes * 60000).toISOString();
 		timerEndsAt = endsAt;
 		if (currentRecipeId) {
-			await supabase
-				.from('recipes')
-				.update({ active_timer_ends_at: endsAt })
-				.eq('id', currentRecipeId);
+			await convexClient.mutation(api.chat.updateRecipe, {
+				recipeId: currentRecipeId,
+				activeTimerEndsAt: endsAt
+			});
 		}
 	}
 </script>

@@ -1,9 +1,13 @@
 import { redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
+import { ConvexHttpClient } from 'convex/browser';
+import { PUBLIC_CONVEX_URL } from '$env/static/public';
+import { api } from '../../../convex/_generated/api';
+
+const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
 export const actions = {
-	newChat: async ({ request, locals: { supabase, safeGetSession } }) => {
-		const { user } = await safeGetSession();
+	newChat: async ({ request, locals: { user } }) => {
 		if (!user) throw redirect(303, '/login');
 
 		const formData = await request.formData();
@@ -13,25 +17,18 @@ export const actions = {
 			return { error: 'Please enter a message' };
 		}
 
-		const { data: chat, error: chatError } = await supabase
-			.from('chats')
-			.insert({ user_id: user.id, title: 'Neues Rezept' })
-			.select()
-			.single();
-
-		if (chatError || !chat) {
+		let chatId: string;
+		try {
+			chatId = await convex.mutation(api.chat.createChat, {
+				email: user.email,
+				title: 'Neues Rezept',
+				initialMessage
+			});
+		} catch (err) {
+			console.error('Failed to create new chat:', err);
 			return { error: 'Failed to create chat' };
 		}
 
-		const { error: msgError } = await supabase.from('chat_messages').insert({
-			chat_id: chat.id,
-			role: 'user',
-			content: initialMessage
-		});
-
-		if (msgError) {
-			return { error: 'Failed to save message' };
-		}
-		throw redirect(303, `/dashboard/${chat.id}?start=true`);
+		throw redirect(303, `/dashboard/${chatId}?start=true`);
 	}
 } satisfies Actions;
