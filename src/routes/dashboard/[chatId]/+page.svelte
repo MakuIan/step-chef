@@ -4,6 +4,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Card, CardContent } from '$lib/components/ui/card';
 	import { page } from '$app/state';
+	import { invalidateAll } from '$app/navigation';
 	import { fly, slide } from 'svelte/transition';
 	import { DefaultChatTransport, type UIMessage } from 'ai';
 	import type { FullRecipeInput, SuggestRecipesInput } from '$lib/schemas.js';
@@ -87,9 +88,14 @@
 		});
 	}
 
-	let chat = $state(createChatInstance(data.messages, page.params.chatId as string));
+	let currentChatId = page.params.chatId as string;
+	let chat = $state(createChatInstance(data.messages, currentChatId));
+	
 	$effect(() => {
-		chat = createChatInstance(data.messages, page.params.chatId as string);
+		if (page.params.chatId !== currentChatId) {
+			currentChatId = page.params.chatId as string;
+			chat = createChatInstance(data.messages, currentChatId);
+		}
 	});
 
 	let shouldAutoStart = $state(page.url.searchParams.get('start') === 'true');
@@ -180,10 +186,20 @@
 		inputValue = '';
 	}
 
-	function handleRecipeSelection(selectedRecipeTitle: string) {
+	async function handleRecipeSelection(selectedRecipeTitle: string) {
 		chat.sendMessage({
 			text: `Ich wähle: ${selectedRecipeTitle}. Bitte erstelle das genaue Kochrezept mit allen Schritten und Timern.`
 		});
+
+		try {
+			await convexClient.mutation(api.chat.updateTitle, {
+				chatId: page.params.chatId as any,
+				title: selectedRecipeTitle
+			});
+			await invalidateAll();
+		} catch (error) {
+			console.error("Failed to update chat title:", error);
+		}
 	}
 
 	async function startTimer(minutes: number) {
