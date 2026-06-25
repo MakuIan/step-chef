@@ -36,7 +36,9 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		throw redirect(303, localizeHref('/login'));
 	}
 
-	if (session && isPublicRoute) {
+	const isHomeRoute = /^\/([a-z]{2}\/)?$/.test(event.url.pathname);
+
+	if (session && (isPublicRoute || isHomeRoute)) {
 		throw redirect(303, localizeHref('/dashboard'));
 	}
 
