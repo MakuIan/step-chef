@@ -257,7 +257,7 @@
 																: 'opacity-50'}"
 														>
 															<div class="flex items-start justify-between">
-																<span class="font-bold">Schritt {index + 1}</span>
+																<span class="font-bold">Schritt {stepIndex + 1}</span>
 																{#if step?.timerMinutes}
 																	<div class="flex items-center gap-2">
 																		{#if currentStepIndex === stepIndex && remainingTime}
@@ -292,17 +292,40 @@
 																{/if}
 															</div>
 
-															{#if currentStepIndex === stepIndex && step?.instruction}
-																<Button
-																	class="mt-2 w-full"
-																	onclick={() => updateStep(stepIndex + 1)}
-																>
-																	Schritt erledigt
-																</Button>
+															{#if currentStepIndex === stepIndex}
+																<div class="mt-2 flex gap-2">
+																	{#if stepIndex > 0}
+																		<Button
+																			variant="outline"
+																			class="flex-1"
+																			onclick={() => updateStep(stepIndex - 1)}
+																		>
+																			Zurück
+																		</Button>
+																	{/if}
+																	<Button
+																		class="flex-1"
+																		onclick={() => updateStep(stepIndex + 1)}
+																		disabled={!step?.instruction}
+																	>
+																		Schritt erledigt
+																	</Button>
+																</div>
 															{/if}
 														</div>
 													{/each}
 												</div>
+
+												{#if currentStepIndex >= (recipe?.steps?.length || 0) && (recipe?.steps?.length || 0) > 0}
+													<div class="mt-4 flex gap-2">
+														<Button class="flex-1" variant="outline" onclick={() => updateStep(currentStepIndex - 1)}>
+															Zurück
+														</Button>
+														<Button class="flex-1 bg-green-600 hover:bg-green-700 text-white" onclick={() => updateStep(0)}>
+															Rezept neu starten
+														</Button>
+													</div>
+												{/if}
 											</div>
 										{/if}
 									{/if}
