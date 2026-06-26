@@ -85,11 +85,18 @@
 		<Card.Content class="space-y-4">
 			<form onsubmit={handleLogin}>
 				{#if errorMessage}
-					<div class="text-sm text-red-500 mb-2">{errorMessage}</div>
+					<div class="mb-2 text-sm text-red-500">{errorMessage}</div>
 				{/if}
 				<div class="space-y-2">
 					<Label for="email">Email</Label>
-					<Input id="email" name="email" type="email" bind:value={email} placeholder={m['auth.email_placeholder']()} required />
+					<Input
+						id="email"
+						name="email"
+						type="email"
+						bind:value={email}
+						placeholder={m['auth.email_placeholder']()}
+						required
+					/>
 				</div>
 				<div class="space-y-2">
 					<Label for="password">Password</Label>
@@ -110,14 +117,34 @@
 					{/if}
 				</Button>
 			</form>
-			<section>
-				<button type="button" name="google" onclick={() => signInWithProvider('google')}>
+			<div class="relative">
+				<div class="absolute inset-0 flex items-center">
+					<span class="w-full border-t"></span>
+				</div>
+				<div class="relative flex justify-center text-xs uppercase">
+					<span class="bg-card px-2 text-muted-foreground">Oder fortfahren mit</span>
+				</div>
+			</div>
+			<div class="grid grid-cols-2 gap-4">
+				<Button
+					variant="outline"
+					type="button"
+					onclick={() => signInWithProvider('google')}
+					disabled={loading}
+				>
 					{@render socialLoginIcon('google')}
-				</button>
-				<button type="button" name="facebook" onclick={() => signInWithProvider('facebook')}>
+					Google
+				</Button>
+				<Button
+					variant="outline"
+					type="button"
+					onclick={() => signInWithProvider('facebook')}
+					disabled={loading}
+				>
 					{@render socialLoginIcon('facebook')}
-				</button>
-			</section>
+					Facebook
+				</Button>
+			</div>
 			<Card.Footer>
 				<p class="text-sm text-muted-foreground">
 					{m['auth.to_sign_up']()}

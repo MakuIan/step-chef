@@ -74,27 +74,43 @@
 				: 'pointer-events-none w-0 -translate-x-full p-0 opacity-0 md:translate-x-0'}"
 		>
 			<div class="flex h-full w-full min-w-50 flex-col overflow-hidden">
-				<Button class="mb-4 w-full shrink-0" href={localizeHref('/dashboard')}>{m['chat.new_recipe']()}</Button>
+				<Button class="mb-4 w-full shrink-0" href={localizeHref('/dashboard')}
+					>{m['chat.new_recipe']()}</Button
+				>
 				<ul class="flex flex-1 flex-col gap-2 overflow-y-auto pb-4">
 					{#each data.chats as chat (chat._id)}
-						<li class="group relative flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors hover:bg-muted">
+						<li
+							class="group relative flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors hover:bg-muted"
+						>
 							{#if editingChatId === chat._id}
 								<div class="flex w-full items-center gap-2">
 									<!-- svelte-ignore a11y_autofocus -->
-									<input 
-										type="text" 
-										bind:value={editingTitle} 
-										class="flex-1 rounded border px-2 py-1 text-sm bg-background w-full min-w-0" 
+									<input
+										type="text"
+										bind:value={editingTitle}
+										class="w-full min-w-0 flex-1 rounded border bg-background px-2 py-1 text-sm"
 										onkeydown={(e) => {
 											if (e.key === 'Enter') handleUpdateTitle(chat._id);
 											if (e.key === 'Escape') editingChatId = null;
 										}}
 										autofocus
 									/>
-									<button onclick={(e) => { e.preventDefault(); handleUpdateTitle(chat._id); }} class="text-green-600 hover:text-green-700">
+									<button
+										onclick={(e) => {
+											e.preventDefault();
+											handleUpdateTitle(chat._id);
+										}}
+										class="text-green-600 hover:text-green-700"
+									>
 										<Check class="h-4 w-4" />
 									</button>
-									<button onclick={(e) => { e.preventDefault(); editingChatId = null; }} class="text-red-600 hover:text-red-700">
+									<button
+										onclick={(e) => {
+											e.preventDefault();
+											editingChatId = null;
+										}}
+										class="text-red-600 hover:text-red-700"
+									>
 										<X class="h-4 w-4" />
 									</button>
 								</div>
@@ -103,15 +119,22 @@
 									{chat.title}
 								</a>
 								<div class="hidden gap-1 group-hover:flex">
-									<button 
-										onclick={(e) => { e.preventDefault(); editingChatId = chat._id; editingTitle = chat.title; }} 
+									<button
+										onclick={(e) => {
+											e.preventDefault();
+											editingChatId = chat._id;
+											editingTitle = chat.title;
+										}}
 										class="p-1 text-muted-foreground hover:text-foreground"
 										title={m['chat.rename']()}
 									>
 										<Pencil class="h-4 w-4" />
 									</button>
-									<button 
-										onclick={(e) => { e.preventDefault(); handleDeleteChat(chat._id); }} 
+									<button
+										onclick={(e) => {
+											e.preventDefault();
+											handleDeleteChat(chat._id);
+										}}
 										class="p-1 text-muted-foreground hover:text-destructive"
 										title={m['chat.delete']()}
 									>
@@ -127,7 +150,7 @@
 
 		<!-- Chat Area -->
 		<section class="relative flex flex-1 flex-col transition-all duration-300">
-			<div class="sticky top-4 left-4 z-10 w-fit ml-4 mt-4">
+			<div class="sticky top-4 left-4 z-10 mt-4 ml-4 w-fit">
 				<Button variant="outline" size="icon" onclick={toggleSidebar}>
 					<Menu class="h-4 w-4" />
 				</Button>

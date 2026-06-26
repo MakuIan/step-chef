@@ -9,14 +9,13 @@ import { api } from '../../../convex/_generated/api';
 const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
 export const load: LayoutServerLoad = async ({ locals: { user } }) => {
-
 	if (!user) {
 		throw redirect(300, localizeHref('/login'));
 	}
 
 	try {
 		const chats = await convex.query(api.chat.getChatsForUser, { email: user.email });
-		
+
 		return {
 			chats: chats ?? [],
 			chatsFetchError: null

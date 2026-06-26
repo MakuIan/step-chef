@@ -91,7 +91,7 @@
 
 	let currentChatId = page.params.chatId as string;
 	let chat = $state(createChatInstance(data.messages, currentChatId));
-	
+
 	$effect(() => {
 		if (page.params.chatId !== currentChatId) {
 			currentChatId = page.params.chatId as string;
@@ -199,7 +199,7 @@
 			});
 			await invalidateAll();
 		} catch (error) {
-			console.error("Failed to update chat title:", error);
+			console.error('Failed to update chat title:', error);
 		}
 	}
 
@@ -335,10 +335,17 @@
 
 												{#if currentStepIndex >= (recipe?.steps?.length || 0) && (recipe?.steps?.length || 0) > 0}
 													<div class="mt-4 flex gap-2">
-														<Button class="flex-1" variant="outline" onclick={() => updateStep(currentStepIndex - 1)}>
+														<Button
+															class="flex-1"
+															variant="outline"
+															onclick={() => updateStep(currentStepIndex - 1)}
+														>
 															Zurück
 														</Button>
-														<Button class="flex-1 bg-green-600 hover:bg-green-700 text-white" onclick={() => updateStep(0)}>
+														<Button
+															class="flex-1 bg-green-600 text-white hover:bg-green-700"
+															onclick={() => updateStep(0)}
+														>
 															{m['chat.restart_recipe']()}
 														</Button>
 													</div>
@@ -386,7 +393,7 @@
 	</main>
 
 	<!-- Chat Input Bar -->
-	<div class="sticky bottom-0 mt-4 border-t bg-background p-4 z-10 w-full">
+	<div class="sticky bottom-0 z-10 mt-4 w-full border-t bg-background p-4">
 		<form onsubmit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
 			<Input
 				bind:value={inputValue}

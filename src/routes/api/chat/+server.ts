@@ -11,7 +11,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 const google = createGoogleGenerativeAI({
 	apiKey: GOOGLE_API_KEY
 });
-const openrouter = createOpenRouter({apiKey: OPENROUTER_API_KEY});
+const openrouter = createOpenRouter({ apiKey: OPENROUTER_API_KEY });
 
 const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
@@ -120,4 +120,3 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 
 	return result.toUIMessageStreamResponse();
 };
-
