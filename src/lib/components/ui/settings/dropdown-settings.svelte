@@ -4,20 +4,21 @@
 	import { User, Settings, LogOut, Languages } from 'lucide-svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeHref, setLocale } from '$lib/paraglide/runtime';
-	import { enhance } from '$app/forms';
+	import { authClient } from '$lib/auth-client';
+	import { goto } from '$app/navigation';
 	const switchLanguage = (locale: 'de' | 'en') => {
 		setLocale(locale);
 	};
-	let logoutForm: HTMLFormElement;
+	async function handleLogout() {
+		await authClient.signOut({
+			fetchOptions: {
+				onSuccess: async () => {
+					await goto(localizeHref('/login'));
+				}
+			}
+		});
+	}
 </script>
-
-<form
-	bind:this={logoutForm}
-	action={localizeHref('/logout')}
-	method="POST"
-	use:enhance
-	class="hidden"
-></form>
 
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
@@ -50,7 +51,7 @@
 
 		<DropdownMenu.Separator />
 
-		<DropdownMenu.Item class="text-red-600 focus:text-red-600" onclick={() => logoutForm.submit()}>
+		<DropdownMenu.Item class="text-red-600 focus:text-red-600" onclick={handleLogout}>
 			<LogOut class="mr-2 h-4 w-4" />
 			<span>{m['dropdown.btn_sign_out']()}</span>
 		</DropdownMenu.Item>

@@ -11,6 +11,7 @@
 	import { ConvexClient } from 'convex/browser';
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
 	import { api } from '../../../../convex/_generated/api';
+	import * as m from '$lib/paraglide/messages';
 	let { data } = $props();
 
 	// type DatabaseMessage = {
@@ -188,7 +189,7 @@
 
 	async function handleRecipeSelection(selectedRecipeTitle: string) {
 		chat.sendMessage({
-			text: `Ich wähle: ${selectedRecipeTitle}. Bitte erstelle das genaue Kochrezept mit allen Schritten und Timern.`
+			text: m['chat.prompt_select_recipe']({ title: selectedRecipeTitle })
 		});
 
 		try {
@@ -338,7 +339,7 @@
 															Zurück
 														</Button>
 														<Button class="flex-1 bg-green-600 hover:bg-green-700 text-white" onclick={() => updateStep(0)}>
-															Rezept neu starten
+															{m['chat.restart_recipe']()}
 														</Button>
 													</div>
 												{/if}
@@ -376,7 +377,7 @@
 								></div>
 								<div class="h-2 w-2 animate-bounce rounded-full bg-gray-400"></div>
 							</div>
-							<span class="text-sm font-medium">Step-Chef überlegt...</span>
+							<span class="text-sm font-medium">{m['chat.thinking']()}</span>
 						</CardContent>
 					</Card>
 				</div>
@@ -389,7 +390,7 @@
 		<form onsubmit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
 			<Input
 				bind:value={inputValue}
-				placeholder="Was möchtest du kochen?"
+				placeholder={m['chat.input_placeholder']()}
 				class="flex-1"
 				disabled={chat.status === 'streaming' || chat.status === 'submitted'}
 			/>
@@ -397,7 +398,7 @@
 				type="submit"
 				disabled={chat.status === 'streaming' || chat.status === 'submitted' || !inputValue.trim()}
 			>
-				Senden
+				{m['chat.send']()}
 			</Button>
 		</form>
 	</div>

@@ -23,5 +23,22 @@
 	"fetch_errors": {
 		"chat_history_fetch_error": "Wir konnten Ihre Chat-Verläufe gerade nicht laden.",
 		"chat_messages_fetch_error": "Wir konnten die Chat-Nachrichten gerade nicht laden."
+	},
+	"chat": {
+		"new_recipe": "Neues Rezept",
+		"rename": "Umbenennen",
+		"delete": "Löschen",
+		"input_placeholder": "Was möchtest du kochen?",
+		"send": "Senden",
+		"thinking": "Step-Chef überlegt...",
+		"restart_recipe": "Rezept neu starten",
+		"show_recipe": "Rezept für {title} anzeigen",
+		"recipe_generating": "Rezept wird generiert...",
+		"recipe_selected": "Du hast folgendes Rezept ausgewählt:",
+		"prompt_select_recipe": "Ich wähle: {title}. Bitte erstelle das genaue Kochrezept mit allen Schritten und Timern.",
+		"new_chat_subtitle": "Was möchtest du heute kochen? Gib Zutaten ein oder frage nach einer Idee.",
+		"new_chat_placeholder": "z.B. Ich habe Hühnchen, Reis und Paprika...",
+		"new_chat_starting": "Startet...",
+		"new_chat_go": "Los!"
 	}
 }

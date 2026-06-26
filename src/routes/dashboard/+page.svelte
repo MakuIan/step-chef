@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { enhance } from '$app/forms';
 	import { ChefHat } from 'lucide-svelte'; // Optional: if you use lucide icons
+	import * as m from '$lib/paraglide/messages';
 
 	let isSubmitting = $state(false);
 </script>
@@ -17,7 +18,7 @@
 		</div>
 		<h1 class="mb-2 text-3xl font-bold text-gray-900">Step-Chef</h1>
 		<p class="text-gray-500">
-			Was möchtest du heute kochen? Gib Zutaten ein oder frage nach einer Idee.
+			{m['chat.new_chat_subtitle']()}
 		</p>
 	</div>
 
@@ -38,13 +39,13 @@
 		>
 			<Input
 				name="message"
-				placeholder="z.B. Ich habe Hühnchen, Reis und Paprika..."
+				placeholder={m['chat.new_chat_placeholder']()}
 				class="border-0 py-6 text-lg shadow-none focus-visible:ring-0"
 				disabled={isSubmitting}
 				required
 			/>
 			<Button type="submit" disabled={isSubmitting} class="h-12 px-6">
-				{isSubmitting ? 'Startet...' : 'Los!'}
+				{isSubmitting ? m['chat.new_chat_starting']() : m['chat.new_chat_go']()}
 			</Button>
 		</div>
 	</form>

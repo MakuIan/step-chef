@@ -25,5 +25,22 @@
 	"fetch_errors": {
 		"chat_history_fetch_error": "We couldn't load your chat history right now.",
 		"chat_messages_fetch_error": "We couldn't load the chat messages right now."
+	},
+	"chat": {
+		"new_recipe": "New Recipe",
+		"rename": "Rename",
+		"delete": "Delete",
+		"input_placeholder": "What do you want to cook?",
+		"send": "Send",
+		"thinking": "Step-Chef is thinking...",
+		"restart_recipe": "Restart recipe",
+		"show_recipe": "Show recipe for {title}",
+		"recipe_generating": "Generating recipe...",
+		"recipe_selected": "You have selected the following recipe:",
+		"prompt_select_recipe": "I choose: {title}. Please create the detailed recipe with all steps and timers.",
+		"new_chat_subtitle": "What would you like to cook today? Enter ingredients or ask for an idea.",
+		"new_chat_placeholder": "e.g. I have chicken, rice and bell pepper...",
+		"new_chat_starting": "Starting...",
+		"new_chat_go": "Go!"
 	}
 }

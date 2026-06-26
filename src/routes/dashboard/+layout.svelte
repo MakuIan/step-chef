@@ -9,6 +9,7 @@
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
 	import { api } from '../../../convex/_generated/api';
 	import { invalidateAll, goto } from '$app/navigation';
+	import * as m from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	interface Props {
 		children: Snippet;
@@ -73,7 +74,7 @@
 				: 'pointer-events-none w-0 -translate-x-full p-0 opacity-0 md:translate-x-0'}"
 		>
 			<div class="flex h-full w-full min-w-50 flex-col overflow-hidden">
-				<Button class="mb-4 w-full shrink-0" href={localizeHref('/dashboard')}>New Recipe</Button>
+				<Button class="mb-4 w-full shrink-0" href={localizeHref('/dashboard')}>{m['chat.new_recipe']()}</Button>
 				<ul class="flex flex-1 flex-col gap-2 overflow-y-auto pb-4">
 					{#each data.chats as chat (chat._id)}
 						<li class="group relative flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors hover:bg-muted">
@@ -105,14 +106,14 @@
 									<button 
 										onclick={(e) => { e.preventDefault(); editingChatId = chat._id; editingTitle = chat.title; }} 
 										class="p-1 text-muted-foreground hover:text-foreground"
-										title="Umbenennen"
+										title={m['chat.rename']()}
 									>
 										<Pencil class="h-4 w-4" />
 									</button>
 									<button 
 										onclick={(e) => { e.preventDefault(); handleDeleteChat(chat._id); }} 
 										class="p-1 text-muted-foreground hover:text-destructive"
-										title="Löschen"
+										title={m['chat.delete']()}
 									>
 										<Trash2 class="h-4 w-4" />
 									</button>
