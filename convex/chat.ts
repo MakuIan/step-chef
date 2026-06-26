@@ -112,6 +112,7 @@ export const getChatsForUser = query({
     return await ctx.db
       .query("chats")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .order("desc")
       .collect();
   },
 });

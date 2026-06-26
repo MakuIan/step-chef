@@ -1,15 +1,17 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { GOOGLE_API_KEY } from '$env/static/private';
+import { GOOGLE_API_KEY, OPENROUTER_API_KEY } from '$env/static/private';
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { type RequestHandler } from '@sveltejs/kit';
 import { suggestRecipesInputSchema, fullRecipeInputSchema } from '$lib/schemas';
 import { convertToModelMessages, streamText, tool, type UIMessage } from 'ai';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../convex/_generated/api';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 
 const google = createGoogleGenerativeAI({
 	apiKey: GOOGLE_API_KEY
 });
+const openrouter = createOpenRouter({apiKey: OPENROUTER_API_KEY});
 
 const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
@@ -54,7 +56,7 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 			: 'Always respond in English. All recipe titles, descriptions, and ingredients must be in English.';
 
 	const result = streamText({
-		model: google('gemini-3.1-flash-lite-preview'),
+		model: openrouter('nvidia/nemotron-3-super-120b-a12b:free'),
 		messages: await convertToModelMessages(messages),
 		stopWhen: (event) => event.steps.length >= 5,
 		system: `Du bist ein professioneller, aber freundlicher Familien-Koch für die App 'Step-Chef'. 
@@ -99,7 +101,6 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 		async onFinish(result) {
 			const { text, toolCalls, steps } = result;
 			const allToolCalls = steps ? steps.flatMap((step) => step.toolCalls) : toolCalls || [];
-			console.log('allToolCalls', allToolCalls);
 			try {
 				await convex.mutation(api.chat.insertMessage, {
 					chatId,

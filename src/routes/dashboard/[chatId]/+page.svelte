@@ -385,7 +385,7 @@
 	</main>
 
 	<!-- Chat Input Bar -->
-	<div class="fixed right-0 bottom-0 left-0 border-t bg-white p-4">
+	<div class="sticky bottom-0 mt-4 border-t bg-background p-4 z-10 w-full">
 		<form onsubmit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
 			<Input
 				bind:value={inputValue}

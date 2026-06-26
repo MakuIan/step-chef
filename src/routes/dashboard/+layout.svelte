@@ -51,9 +51,9 @@
 	}
 </script>
 
-<div class="flex h-screen flex-col overflow-hidden bg-background">
+<div class="flex min-h-screen flex-col bg-background">
 	<AppHeader />
-	<div class="relative flex flex-1 overflow-hidden">
+	<div class="relative flex flex-1">
 		<!-- Overlay für Mobile: Dunkelt den Hintergrund ab, wenn Sidebar offen ist -->
 		{#if isSidebarOpen}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -66,15 +66,15 @@
 
 		<!-- SideBar -->
 		<section
-			class="absolute top-0 bottom-0 z-30 flex flex-col overflow-hidden border-r border-border
-                   bg-muted/20 transition-all duration-300 ease-in-out md:relative
+			class="absolute top-0 bottom-0 z-30 flex flex-col border-r border-border
+                   bg-muted/20 transition-all duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:max-h-screen
                    {isSidebarOpen
 				? 'w-3/4 max-w-xs translate-x-0 p-4 opacity-100 md:w-1/5'
 				: 'pointer-events-none w-0 -translate-x-full p-0 opacity-0 md:translate-x-0'}"
 		>
-			<div class="flex w-full min-w-50 flex-col">
-				<Button class="mb-4 w-full" href={localizeHref('/dashboard')}>New Recipe</Button>
-				<ul class="flex flex-col gap-2 overflow-y-auto">
+			<div class="flex h-full w-full min-w-50 flex-col overflow-hidden">
+				<Button class="mb-4 w-full shrink-0" href={localizeHref('/dashboard')}>New Recipe</Button>
+				<ul class="flex flex-1 flex-col gap-2 overflow-y-auto pb-4">
 					{#each data.chats as chat (chat._id)}
 						<li class="group relative flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors hover:bg-muted">
 							{#if editingChatId === chat._id}
@@ -125,14 +125,14 @@
 		</section>
 
 		<!-- Chat Area -->
-		<section class="relative flex flex-1 flex-col overflow-hidden transition-all duration-300">
-			<div class="absolute top-4 left-4 z-10">
+		<section class="relative flex flex-1 flex-col transition-all duration-300">
+			<div class="sticky top-4 left-4 z-10 w-fit ml-4 mt-4">
 				<Button variant="outline" size="icon" onclick={toggleSidebar}>
 					<Menu class="h-4 w-4" />
 				</Button>
 			</div>
 
-			<div class="flex-1 overflow-y-auto p-4 pt-16 md:p-8 md:pt-16">
+			<div class="flex-1 p-4 pt-4 md:p-8 md:pt-4">
 				{@render children()}
 			</div>
 		</section>
