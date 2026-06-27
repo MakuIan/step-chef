@@ -1,0 +1,60 @@
+import { createClient, type GenericCtx } from "@convex-dev/better-auth";
+import { betterAuth } from "better-auth";
+import { Resend } from "resend";
+import { components } from "./_generated/api";
+import { DataModel } from "./_generated/dataModel";
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+export const authComponent = createClient<DataModel>(components.betterAuth);
+
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+	return betterAuth({
+		database: authComponent.adapter(ctx),
+		emailAndPassword: {
+			enabled: true,
+			requireEmailVerification: true
+		},
+		emailVerification: {
+			sendOnSignUp: true,
+			sendVerificationEmail: async ({ user, url }) => {
+				try {
+					const resendClient = new Resend(process.env.RESEND_API_KEY);
+					await resendClient.emails.send({
+						from: 'Step-Chef <onboarding@resend.dev>',
+						to: user.email,
+						subject: 'E-Mail bestätigen',
+						html: `<a href="${url}">Bitte klicke hier, um deine E-Mail zu bestätigen.</a>`
+					});
+				} catch (err) {
+					console.error('[EmailVerification] Failed to send verification email:', err);
+				}
+			}
+		},
+		socialProviders: {
+			google: {
+				clientId: process.env.GOOGLE_CLIENT_ID!,
+				clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+			},
+			facebook: {
+				clientId: process.env.FACEBOOK_CLIENT_ID!,
+				clientSecret: process.env.FACEBOOK_CLIENT_SECRET!
+			}
+		}
+	});
+};
+
+// Query to let SvelteKit verify sessions from cookies
+export const getSession = query({
+	args: {
+		sessionToken: v.string()
+	},
+	handler: async (ctx, args) => {
+		const auth = createAuth(ctx);
+		return await auth.api.getSession({
+			headers: new Headers({
+				cookie: `better-auth.session_token=${args.sessionToken}`
+			})
+		});
+	}
+});

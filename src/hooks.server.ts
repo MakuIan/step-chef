@@ -2,9 +2,11 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { getTextDirection, localizeHref } from '$lib/paraglide/runtime';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { sequence } from '@sveltejs/kit/hooks';
-import { auth } from '$lib/auth';
-import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { building } from '$app/environment';
+import { ConvexHttpClient } from 'convex/browser';
+import { PUBLIC_CONVEX_URL } from '$env/static/public';
+import { api } from '../convex/_generated/api';
+
+const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
@@ -19,20 +21,32 @@ const handleParaglide: Handle = ({ event, resolve }) =>
 	});
 
 const handleAuth: Handle = async ({ event, resolve }) => {
-	// Retrieve user session
-	const session = await auth.api.getSession({
-		headers: event.request.headers
-	});
+	const isAuthApi = event.url.pathname.startsWith('/api/auth');
+
+	// If it is the auth API, let the proxy handle it
+	if (isAuthApi) {
+		return resolve(event);
+	}
+
+	const sessionToken = event.cookies.get('better-auth.session_token');
+	let session = null;
+
+	if (sessionToken) {
+		try {
+			session = await convex.query(api.auth.getSession, { sessionToken });
+		} catch (error) {
+			console.error('Failed to retrieve session from Convex:', error);
+		}
+	}
 
 	event.locals.user = session?.user || null;
 	event.locals.session = session?.session || null;
 
-	const isAuthApi = event.url.pathname.startsWith('/api/auth');
 	const isPublicRoute = /^\/([a-z]{2}\/)?(login|signup|waiting_for_email_confirmation)/.test(
 		event.url.pathname
 	);
 
-	if (!session && !isPublicRoute && !isAuthApi) {
+	if (!session && !isPublicRoute) {
 		throw redirect(303, localizeHref('/login'));
 	}
 
@@ -42,7 +56,7 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		throw redirect(303, localizeHref('/dashboard'));
 	}
 
-	return svelteKitHandler({ event, resolve, auth, building });
+	return resolve(event);
 };
 
 export const handle: Handle = sequence(handleParaglide, handleAuth);
