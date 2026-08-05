@@ -1,12 +1,8 @@
 import { httpRouter } from "convex/server";
-import { authComponent } from "./auth";
+import { authComponent, createAuth } from "./auth";
 
 const http = httpRouter();
 
-http.route({
-	path: "/api/auth/*",
-	method: "*",
-	handler: authComponent.handler
-});
+authComponent.registerRoutesLazy(http, createAuth);
 
 export default http;

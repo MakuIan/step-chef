@@ -36,10 +36,23 @@
 	}
 
 	async function signInWithProvider(provider: string) {
-		await authClient.signIn.social({
-			provider: provider as 'google' | 'facebook',
-			callbackURL: localizeHref('/dashboard')
-		});
+		loading = true;
+		errorMessage = '';
+		try {
+			const { data, error } = await authClient.signIn.social({
+				provider: provider as 'google' | 'facebook',
+				callbackURL: localizeHref('/dashboard')
+			});
+			if (error) {
+				console.error('Social login error:', error);
+				errorMessage = error.message || 'Social Login fehlgeschlagen';
+			}
+		} catch (err: any) {
+			console.error('Social login exception:', err);
+			errorMessage = err?.message || 'Social Login fehlgeschlagen';
+		} finally {
+			loading = false;
+		}
 	}
 </script>
 
