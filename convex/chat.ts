@@ -83,6 +83,25 @@ export const insertRecipe = mutation({
 			originalChatId = ctx.db.normalizeId('chats', args.originalChatId) ?? undefined;
 		}
 
+		if (originalChatId) {
+			const existingRecipe = await ctx.db
+				.query('recipes')
+				.withIndex('by_original_chat_id', (q) => q.eq('originalChatId', originalChatId))
+				.first();
+
+			if (existingRecipe) {
+				await ctx.db.patch(existingRecipe._id, {
+					title: args.title,
+					language: args.language,
+					statusText: args.statusText,
+					currentStep: args.currentStep,
+					steps: args.steps,
+					updatedAt: Date.now()
+				});
+				return existingRecipe._id;
+			}
+		}
+
 		const recipeId = await ctx.db.insert('recipes', {
 			userId: userDbId,
 			originalChatId: originalChatId,
@@ -217,7 +236,7 @@ export const updateTitle = mutation({
 });
 
 /**
- * Deletes a chat session from the database.
+ * Deletes a chat session from the database along with its messages and recipes.
  */
 export const deleteChat = mutation({
 	args: {
@@ -230,7 +249,80 @@ export const deleteChat = mutation({
 			throw new Error('Chat not found');
 		}
 
+		// 1. Delete all associated messages
+		const messages = await ctx.db
+			.query('chatMessages')
+			.withIndex('by_chat_id', (q) => q.eq('chatId', args.chatId))
+			.collect();
+		for (const msg of messages) {
+			await ctx.db.delete(msg._id);
+		}
+
+		// 2. Delete all associated recipes
+		const recipes = await ctx.db
+			.query('recipes')
+			.withIndex('by_original_chat_id', (q) => q.eq('originalChatId', args.chatId))
+			.collect();
+		for (const recipe of recipes) {
+			await ctx.db.delete(recipe._id);
+		}
+
+		// 3. Delete the chat record itself
 		await ctx.db.delete(args.chatId);
 		return { success: true };
+	}
+});
+
+/**
+ * Utility mutation to purge orphaned chatMessages and recipes left behind by past chat deletions.
+ */
+export const cleanupOrphanedData = mutation({
+	args: {},
+	handler: async (ctx) => {
+		const chats = await ctx.db.query('chats').collect();
+		const validChatIds = new Set(chats.map((c) => c._id));
+
+		const messages = await ctx.db.query('chatMessages').collect();
+		let deletedMessagesCount = 0;
+		const seenMessages = new Set<string>();
+
+		for (const msg of messages) {
+			if (!validChatIds.has(msg.chatId)) {
+				await ctx.db.delete(msg._id);
+				deletedMessagesCount++;
+				continue;
+			}
+			const key = `${msg.chatId}:${msg.role}:${msg.content.trim()}`;
+			if (seenMessages.has(key)) {
+				await ctx.db.delete(msg._id);
+				deletedMessagesCount++;
+			} else {
+				seenMessages.add(key);
+			}
+		}
+
+		const recipes = await ctx.db.query('recipes').collect();
+		let deletedRecipesCount = 0;
+		const seenRecipes = new Set<string>();
+
+		for (const recipe of recipes) {
+			if (recipe.originalChatId && !validChatIds.has(recipe.originalChatId)) {
+				await ctx.db.delete(recipe._id);
+				deletedRecipesCount++;
+				continue;
+			}
+			const key = `${recipe.originalChatId}:${recipe.title.trim()}`;
+			if (seenRecipes.has(key)) {
+				await ctx.db.delete(recipe._id);
+				deletedRecipesCount++;
+			} else {
+				seenRecipes.add(key);
+			}
+		}
+
+		return {
+			deletedMessagesCount,
+			deletedRecipesCount
+		};
 	}
 });

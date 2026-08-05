@@ -3,7 +3,7 @@
 	import AppHeader from '$lib/components/ui/header/app-header.svelte';
 	import type { Snippet } from 'svelte';
 	import type { PageData } from './$types';
-	import { Menu, Pencil, Trash2, Check, X } from 'lucide-svelte';
+	import { Menu, Pencil, Trash2, Check, X, AlertTriangle } from 'lucide-svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { ConvexClient } from 'convex/browser';
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
@@ -28,6 +28,9 @@
 	let editingChatId = $state<string | null>(null);
 	let editingTitle = $state('');
 
+	let chatToDelete = $state<{ id: string; title: string } | null>(null);
+	let isDeleting = $state(false);
+
 	const convexClient = new ConvexClient(PUBLIC_CONVEX_URL);
 
 	async function handleUpdateTitle(chatId: string) {
@@ -41,13 +44,21 @@
 		}
 	}
 
-	async function handleDeleteChat(chatId: string) {
-		await convexClient.mutation(api.chat.deleteChat, {
-			chatId: chatId as any
-		});
-		await invalidateAll();
-		if (page.params.chatId === chatId) {
-			goto(localizeHref('/dashboard'));
+	async function confirmDeleteChat() {
+		if (!chatToDelete) return;
+		isDeleting = true;
+		const targetId = chatToDelete.id;
+		try {
+			await convexClient.mutation(api.chat.deleteChat, {
+				chatId: targetId as any
+			});
+			await invalidateAll();
+			if (page.params.chatId === targetId) {
+				goto(localizeHref('/dashboard'));
+			}
+		} finally {
+			isDeleting = false;
+			chatToDelete = null;
 		}
 	}
 </script>
@@ -133,7 +144,7 @@
 									<button
 										onclick={(e) => {
 											e.preventDefault();
-											handleDeleteChat(chat._id);
+											chatToDelete = { id: chat._id, title: chat.title };
 										}}
 										class="p-1 text-muted-foreground hover:text-destructive"
 										title={m['chat.delete']()}
@@ -162,3 +173,49 @@
 		</section>
 	</div>
 </div>
+
+{#if chatToDelete}
+	<!-- Modal Backdrop -->
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs transition-opacity"
+		onclick={() => (chatToDelete = null)}
+	>
+		<!-- Modal Card -->
+		<div
+			class="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl transition-all"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.key === 'Escape' && (chatToDelete = null)}
+		>
+			<div class="flex items-start gap-4">
+				<div
+					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400"
+				>
+					<AlertTriangle class="h-5 w-5" />
+				</div>
+				<div class="flex-1">
+					<h3 class="text-lg font-semibold text-foreground">
+						{m['chat.delete_confirm_title']()}
+					</h3>
+					<p class="mt-2 text-sm text-muted-foreground">
+						{m['chat.delete_confirm_description']({ title: chatToDelete.title })}
+					</p>
+				</div>
+			</div>
+
+			<div class="mt-6 flex justify-end gap-3">
+				<Button variant="outline" disabled={isDeleting} onclick={() => (chatToDelete = null)}>
+					{m['chat.cancel']()}
+				</Button>
+				<Button variant="destructive" disabled={isDeleting} onclick={confirmDeleteChat}>
+					{#if isDeleting}
+						{m['chat.thinking']()}
+					{:else}
+						{m['chat.delete']()}
+					{/if}
+				</Button>
+			</div>
+		</div>
+	</div>
+{/if}

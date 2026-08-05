@@ -41,6 +41,13 @@
 		"new_chat_subtitle": "What would you like to cook today? Enter ingredients or ask for an idea.",
 		"new_chat_placeholder": "e.g. I have chicken, rice and bell pepper...",
 		"new_chat_starting": "Starting...",
-		"new_chat_go": "Go!"
+		"new_chat_go": "Go!",
+		"delete_confirm_title": "Delete Chat",
+		"delete_confirm_description": "Are you sure you want to delete the chat \"{title}\"? This action cannot be undone.",
+		"cancel": "Cancel",
+		"model_label": "Model:",
+		"recommended": "Recommended",
+		"quota_title": "Model Limit / Quota Reached",
+		"quota_error_message": "Quota for model \"{model}\" was exceeded! Please select a different model below or try again shortly."
 	}
 }

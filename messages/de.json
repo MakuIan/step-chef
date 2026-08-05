@@ -39,6 +39,13 @@
 		"new_chat_subtitle": "Was möchtest du heute kochen? Gib Zutaten ein oder frage nach einer Idee.",
 		"new_chat_placeholder": "z.B. Ich habe Hühnchen, Reis und Paprika...",
 		"new_chat_starting": "Startet...",
-		"new_chat_go": "Los!"
+		"new_chat_go": "Los!",
+		"delete_confirm_title": "Chat löschen",
+		"delete_confirm_description": "Möchtest du den Chat \"{title}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+		"cancel": "Abbrechen",
+		"model_label": "Modell:",
+		"recommended": "Empfohlen",
+		"quota_title": "Modell Limit / Quota erreicht",
+		"quota_error_message": "Quota für Modell \"{model}\" wurde überschritten! Bitte wähle unten ein anderes Modell oder versuche es in Kürze erneut."
 	}
 }

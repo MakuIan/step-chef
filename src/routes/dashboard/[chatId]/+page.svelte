@@ -12,6 +12,7 @@
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
 	import { api } from '../../../../convex/_generated/api';
 	import * as m from '$lib/paraglide/messages';
+	import { cleanRecipeText } from '$lib/utils';
 	let { data } = $props();
 
 	// type DatabaseMessage = {
@@ -40,6 +41,7 @@
 							toolCallId: string;
 							toolName: string;
 							input?: any;
+							args?: any;
 						}>;
 				  }
 				| null
@@ -47,15 +49,19 @@
 
 			const parts: any[] = [];
 			if (msg.content && msg.content.trim() !== '') {
-				parts.push({
-					type: 'text',
-					text: msg.content
-				});
+				const cleanedContent = cleanRecipeText(msg.content);
+				if (cleanedContent) {
+					parts.push({
+						type: 'text',
+						text: cleanedContent
+					});
+				}
 			}
 
 			const toolParts =
 				metadata?.toolCalls?.map((tc) => {
-					const parsedArgs = typeof tc.input === 'string' ? JSON.parse(tc.input) : tc.input || {};
+					const rawInput = tc.args ?? tc.input ?? {};
+					const parsedArgs = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;
 					return {
 						type: `tool-${tc.toolName}` as any,
 						toolCallId: tc.toolCallId,
@@ -75,29 +81,67 @@
 		}) as UIMessage[];
 	}
 
-	function createChatInstance(messages: any[], currentChatId: string) {
-		console.log(`messages:${messages} with type ${typeof messages}`);
+	let selectedModel = $state('inclusionai/ling-3.0-flash:free');
+	let errorMessageBanner = $state<string | null>(null);
+
+	function createChatInstance(messages: any[], currentChatId: string, modelName: string) {
+		console.log(`messages:${messages} with type ${typeof messages}, model: ${modelName}`);
 		return new Chat({
 			messages: getInitialMessages(messages),
 			transport: new DefaultChatTransport({
 				api: '/api/chat',
 				body: {
 					chatId: currentChatId,
-					language: 'de'
+					language: 'de',
+					model: modelName
 				}
-			})
+			}),
+			onError: (err) => {
+				console.error('Chat error:', err);
+				const msg = err?.message || String(err);
+				if (
+					msg.includes('Quota') ||
+					msg.includes('quota') ||
+					msg.includes('429') ||
+					msg.includes('rate') ||
+					msg.includes('limit')
+				) {
+					errorMessageBanner = m['chat.quota_error_message']({ model: modelName });
+				} else {
+					errorMessageBanner = `Fehler (${modelName}): ${msg}`;
+				}
+			}
 		});
 	}
 
 	let currentChatId = page.params.chatId as string;
-	let chat = $state(createChatInstance(data.messages, currentChatId));
+	let chat = $state(createChatInstance(data.messages, currentChatId, selectedModel));
+
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			const savedModel = localStorage.getItem('step_chef_selected_model');
+			if (savedModel && savedModel !== selectedModel) {
+				selectedModel = savedModel;
+				chat = createChatInstance(data.messages, currentChatId, selectedModel);
+			}
+		}
+	});
 
 	$effect(() => {
 		if (page.params.chatId !== currentChatId) {
 			currentChatId = page.params.chatId as string;
-			chat = createChatInstance(data.messages, currentChatId);
+			chat = createChatInstance(data.messages, currentChatId, selectedModel);
 		}
 	});
+
+	function handleModelChange(newModel: string) {
+		selectedModel = newModel;
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('step_chef_selected_model', newModel);
+		}
+		errorMessageBanner = null;
+		chat = createChatInstance(data.messages, currentChatId, newModel);
+	}
 
 	let shouldAutoStart = $state(page.url.searchParams.get('start') === 'true');
 	$effect(() => {
@@ -187,12 +231,17 @@
 		inputValue = '';
 	}
 
+	let isSelectingRecipe = $state(false);
+
 	async function handleRecipeSelection(selectedRecipeTitle: string) {
-		chat.sendMessage({
-			text: m['chat.prompt_select_recipe']({ title: selectedRecipeTitle })
-		});
+		if (isSelectingRecipe || chat.status === 'streaming' || chat.status === 'submitted') return;
+		isSelectingRecipe = true;
 
 		try {
+			chat.sendMessage({
+				text: m['chat.prompt_select_recipe']({ title: selectedRecipeTitle })
+			});
+
 			await convexClient.mutation(api.chat.updateTitle, {
 				chatId: page.params.chatId as any,
 				title: selectedRecipeTitle
@@ -200,6 +249,8 @@
 			await invalidateAll();
 		} catch (error) {
 			console.error('Failed to update chat title:', error);
+		} finally {
+			isSelectingRecipe = false;
 		}
 	}
 
@@ -225,7 +276,10 @@
 							<CardContent class="p-4">
 								{#each message.parts as part, index (index)}
 									{#if part.type === 'text'}
-										<p>{part.text}</p>
+										{@const cleaned = cleanRecipeText(part.text)}
+										{#if cleaned}
+											<p class="whitespace-pre-line text-sm text-gray-700">{cleaned}</p>
+										{/if}
 									{/if}
 
 									<!-- Added (recipe.title) as the key here -->
@@ -237,7 +291,8 @@
 												<button
 													in:fly={{ y: 20, delay: i * 100 }}
 													onclick={() => handleRecipeSelection(recipe.title)}
-													class="min-w-50 flex-1 rounded-xl border bg-white p-4 text-left transition-all hover:shadow-lg"
+													disabled={isSelectingRecipe || chat.status === 'streaming' || chat.status === 'submitted'}
+													class="min-w-50 flex-1 rounded-xl border bg-white p-4 text-left transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
 												>
 													<h4 class="font-bold">{recipe.title}</h4>
 													<p class="text-sm text-gray-500">{recipe.description}</p>
@@ -390,16 +445,51 @@
 				</div>
 			</div>
 		{/if}
+		{#if errorMessageBanner}
+			<div
+				class="mx-auto mb-4 flex max-w-4xl items-center justify-between rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm"
+				in:slide
+			>
+				<div class="flex items-start gap-3">
+					<span class="text-xl">⚠️</span>
+					<div>
+						<h4 class="text-sm font-bold">{m['chat.quota_title']()}</h4>
+						<p class="text-xs text-amber-800">{errorMessageBanner}</p>
+					</div>
+				</div>
+				<button
+					onclick={() => (errorMessageBanner = null)}
+					class="px-2 py-1 text-sm font-bold text-amber-700 hover:text-amber-900"
+				>
+					✕
+				</button>
+			</div>
+		{/if}
 	</main>
 
 	<!-- Chat Input Bar -->
 	<div class="sticky bottom-0 z-10 mt-4 w-full border-t bg-background p-4">
 		<form onsubmit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
+			<!-- Model Selection Dropdown -->
+			<select
+				value={selectedModel}
+				onchange={(e) => handleModelChange(e.currentTarget.value)}
+				disabled={chat.status === 'streaming' || chat.status === 'submitted'}
+				class="h-9 rounded-lg border border-input bg-white px-3 py-1 text-xs font-medium text-foreground shadow-xs outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:opacity-50"
+			>
+				<option value="inclusionai/ling-3.0-flash:free">Ling 3.0 Flash ({m['chat.recommended']()} - OpenRouter)</option>
+				<option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Google)</option>
+			</select>
+
 			<Input
 				bind:value={inputValue}
 				placeholder={m['chat.input_placeholder']()}
 				class="flex-1"
 				disabled={chat.status === 'streaming' || chat.status === 'submitted'}
+				autocomplete="off"
+				autocorrect="off"
+				autocapitalize="off"
+				spellcheck="false"
 			/>
 			<Button
 				type="submit"
