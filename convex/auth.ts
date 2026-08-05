@@ -13,18 +13,10 @@ declare const process: {
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
+	const siteUrl = process.env.SITE_URL || "http://localhost:5173";
 	return betterAuth({
 		database: authComponent.adapter(ctx),
-		baseURL: {
-			allowedHosts: [
-				"localhost:5173",
-				"step-chef.vercel.app",
-				"*.convex.site",
-				"scintillating-goldfinch-133.convex.site",
-				...(process.env.SITE_URL ? [process.env.SITE_URL.replace(/^https?:\/\//, '')] : [])
-			],
-			fallback: process.env.SITE_URL || "http://localhost:5173"
-		},
+		baseURL: siteUrl,
 		trustedOrigins: [
 			"http://localhost:5173",
 			"https://step-chef.vercel.app",

@@ -36,6 +36,16 @@ export const fallback: RequestHandler = async ({ request, params, url }) => {
 		resHeaders.delete('content-encoding');
 		resHeaders.delete('content-length');
 
+		if (typeof res.headers.getSetCookie === 'function') {
+			const cookies = res.headers.getSetCookie();
+			if (cookies.length > 0) {
+				resHeaders.delete('set-cookie');
+				for (const cookie of cookies) {
+					resHeaders.append('set-cookie', cookie);
+				}
+			}
+		}
+
 		return new Response(res.body, {
 			status: res.status,
 			statusText: res.statusText,
