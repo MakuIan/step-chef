@@ -141,14 +141,14 @@
 </script>
 
 {#if isOpen}
-	<!-- Modal Backdrop -->
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	
+	
+	
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
 		onclick={() => (isOpen = false)}
 	>
-		<!-- Modal Content Container -->
+		
 		<div
 			class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl transition-all"
 			onclick={(e) => e.stopPropagation()}
@@ -167,7 +167,7 @@
 			</div>
 
 			<div class="mt-6 space-y-6">
-				<!-- Herdstufen & Herdtyp -->
+				
 				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
 					<h3 class="flex items-center gap-2 font-semibold text-foreground">
 						<Flame class="h-5 w-5 text-orange-500" />
@@ -208,7 +208,7 @@
 					</div>
 				</div>
 
-				<!-- Vorhandene Töpfe & Pfannen -->
+				
 				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
 					<h3 class="flex items-center gap-2 font-semibold text-foreground">
 						<CookingPot class="h-5 w-5 text-blue-500" />
@@ -233,7 +233,7 @@
 					</div>
 				</div>
 
-				<!-- Zubereitungsarten & Stationen -->
+				
 				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
 					<h3 class="flex items-center gap-2 font-semibold text-foreground">
 						<GlassWater class="h-5 w-5 text-purple-500" />
@@ -258,7 +258,7 @@
 					</div>
 				</div>
 
-				<!-- OpenRouter API Key & Usage Section -->
+				
 				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
 					<h3 class="flex items-center gap-2 font-semibold text-foreground">
 						<Key class="h-5 w-5 text-emerald-500" />
@@ -296,7 +296,7 @@
 							</p>
 						</div>
 
-						<!-- Usage Display Card -->
+						
 						<div class="rounded-lg border border-border bg-card p-3 space-y-2">
 							<div class="flex items-center justify-between">
 								<div class="flex items-center gap-2">
@@ -380,7 +380,7 @@
 				</div>
 			</div>
 
-			<!-- Footer -->
+			
 			<div class="mt-6 flex items-center justify-between border-t border-border pt-4">
 				{#if saveMessage}
 					<span class="text-sm font-semibold text-green-600 dark:text-green-400">

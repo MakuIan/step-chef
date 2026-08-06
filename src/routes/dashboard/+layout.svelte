@@ -66,7 +66,7 @@
 <div class="flex min-h-screen flex-col bg-background">
 	<AppHeader />
 	<div class="relative flex flex-1">
-		<!-- Overlay für Mobile: Dunkelt den Hintergrund ab, wenn Sidebar offen ist -->
+		
 		{#if isSidebarOpen}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -76,7 +76,7 @@
 			></div>
 		{/if}
 
-		<!-- SideBar -->
+		
 		<section
 			class="absolute top-0 bottom-0 z-30 flex flex-col border-r border-border
                    bg-muted/20 transition-all duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:max-h-screen
@@ -159,7 +159,7 @@
 			</div>
 		</section>
 
-		<!-- Chat Area -->
+		
 		<section class="relative flex flex-1 flex-col transition-all duration-300">
 			<div class="sticky top-4 left-4 z-10 mt-4 ml-4 w-fit">
 				<Button variant="outline" size="icon" onclick={toggleSidebar}>
@@ -175,14 +175,13 @@
 </div>
 
 {#if chatToDelete}
-	<!-- Modal Backdrop -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs transition-opacity"
 		onclick={() => (chatToDelete = null)}
 	>
-		<!-- Modal Card -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl transition-all"
 			onclick={(e) => e.stopPropagation()}

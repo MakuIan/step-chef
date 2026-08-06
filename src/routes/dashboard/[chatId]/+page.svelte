@@ -13,7 +13,7 @@
 	import { api } from '../../../../convex/_generated/api';
 	import * as m from '$lib/paraglide/messages';
 	import { cleanRecipeText } from '$lib/utils';
-	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '$lib/models';
+	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID, getModelNote } from '$lib/models';
 	import { Check } from 'lucide-svelte';
 	let { data } = $props();
 
@@ -406,7 +406,7 @@
 										{/if}
 									{/if}
 
-									<!-- Added (recipe.title) as the key here -->
+									
 									{#if part.type === 'tool-suggest_recipes' && (part.state === 'input-available' || part.state === 'output-available')}
 										{@const inputData = getSuggestRecipesInput(part.input)}
 										{@const recipesList = inputData.recipes || []}
@@ -458,7 +458,7 @@
 
 									{#if part.type === 'tool-provide_full_recipe' && (part.state === 'input-available' || part.state === 'output-available')}
 										{@const recipe = getFullRecipeInput(part.input)}
-										<!-- Safeguard: Only render if recipe actually has a title -->
+										
 										{#if recipe?.title}
 											<div class="mt-4 space-y-4" in:slide>
 												<div class="flex items-center gap-3">
@@ -477,16 +477,16 @@
 												<div class="rounded-lg bg-blue-50 p-3">
 													<h4 class="mb-1 font-semibold">{m['recipe.ingredients']()}</h4>
 													<ul class="text-sm">
-														<!-- Added ?. and || [] -->
+														
 														{#each recipe?.ingredients || [] as ingredient, index (index)}
 															<li>• {ingredient.menge} {ingredient.name}</li>
 														{/each}
 													</ul>
 												</div>
 
-												<!-- Step-by-Step Tracker -->
+												
 												<div class="space-y-2">
-													<!-- Added ?. and || [] for safety -->
+													
 													{#each recipe?.steps || [] as step, stepIndex (stepIndex)}
 														<div
 															class="rounded-lg border p-3 {currentStepIndex === stepIndex
@@ -576,7 +576,7 @@
 																{/if}
 															</div>
 
-															<!-- Safely render instruction with a fallback while streaming -->
+															
 															<p class="my-2 text-sm">{step?.instruction || m['recipe.loading_instruction']()}</p>
 
 															<div class="flex flex-wrap gap-2 text-xs text-gray-600">
@@ -646,7 +646,7 @@
 							</CardContent>
 						</Card>
 					{/if}
-					<!-- User Messages -->
+					
 					{#if message.role === 'user'}
 						<div class="rounded-2xl rounded-tr-none bg-blue-600 p-3 text-white">
 							{#if message.parts.length > 0 && message.parts[0].type === 'text'}
@@ -657,13 +657,13 @@
 				</div>
 			</div>
 		{/each}
-		<!-- StepChef thinking -->
+		
 		{#if chat.status === 'submitted' || chat.status === 'streaming'}
 			<div class="mb-4 flex justify-start">
 				<div class="max-w-[90%]">
 					<Card>
 						<CardContent class="flex items-center gap-3 p-4 text-gray-500">
-							<!-- Bouncing Dots Animation using Tailwind -->
+							
 							<div class="flex space-x-1.5">
 								<div
 									class="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]"
@@ -701,10 +701,10 @@
 		{/if}
 	</main>
 
-	<!-- Chat Input Bar -->
+	
 	<div class="sticky bottom-0 z-10 mt-4 w-full border-t bg-background p-4">
 		<form onsubmit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
-			<!-- Model Selection Dropdown -->
+			
 			<select
 				value={selectedModel}
 				onchange={(e) => handleModelChange(e.currentTarget.value)}
@@ -713,7 +713,7 @@
 			>
 				{#each AVAILABLE_MODELS as modelOption (modelOption.id)}
 					<option value={modelOption.id}>
-						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{'note' in modelOption && modelOption.note ? `${modelOption.note} - ` : ''}{modelOption.provider})
+						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{getModelNote(modelOption) ? `${getModelNote(modelOption)} - ` : ''}{modelOption.provider})
 					</option>
 				{/each}
 			</select>

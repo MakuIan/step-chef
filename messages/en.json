@@ -55,7 +55,18 @@
 		"timer_resume": "▶ Resume",
 		"timer_reset": "🔄 Reset",
 		"timer_paused_status": "{time} (Paused)",
-		"timer_done_status": "00:00 (Done!)"
+		"timer_done_status": "00:00 (Done!)",
+		"category_skillet_title": "🍳 Quick Skillet Idea",
+		"category_skillet_prompt": "Suggest a delicious chicken skillet recipe for me",
+		"category_grill_title": "🥩 Grill & BBQ Recipes",
+		"category_grill_prompt": "I want to grill something delicious today! Give me ideas for the grill.",
+		"category_drinks_title": "🍸 Mix Drinks & Cocktails",
+		"category_drinks_prompt": "I want to mix a refreshing cocktail or drink. What ingredients do I need?",
+		"category_oven_title": "♨️ Oven & Baking",
+		"category_oven_prompt": "I feel like making something fresh from the oven.",
+		"model_note_slow": "slow",
+		"model_note_very_slow": "very slow",
+		"model_note_very_restrictive": "very restrictive"
 	},
 	"settings": {
 		"title": "Kitchen & Equipment Settings",

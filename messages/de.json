@@ -53,7 +53,18 @@
 		"timer_resume": "▶ Fortfahren",
 		"timer_reset": "🔄 Zurücksetzen",
 		"timer_paused_status": "{time} (Pausiert)",
-		"timer_done_status": "00:00 (Fertig!)"
+		"timer_done_status": "00:00 (Fertig!)",
+		"category_skillet_title": "🍳 Schnelle Pfannen-Idee",
+		"category_skillet_prompt": "Schlag mir ein leckeres Hähnchen-Rezept für die Pfanne vor",
+		"category_grill_title": "🥩 Grillrezepte & BBQ",
+		"category_grill_prompt": "Ich möchte heute etwas Leckeres grillen! Gib mir Ideen für den Grill.",
+		"category_drinks_title": "🍸 Drinks & Cocktails mixen",
+		"category_drinks_prompt": "Ich möchte einen erfrischenden Cocktail oder Drink mixen. Welche Zutaten brauche ich?",
+		"category_oven_title": "♨️ Ofen & Backen",
+		"category_oven_prompt": "Ich habe Lust auf etwas Frisches aus dem Backofen.",
+		"model_note_slow": "langsam",
+		"model_note_very_slow": "sehr langsam",
+		"model_note_very_restrictive": "sehr restriktiv"
 	},
 	"settings": {
 		"title": "Küchen- & Gerätkonfiguration",

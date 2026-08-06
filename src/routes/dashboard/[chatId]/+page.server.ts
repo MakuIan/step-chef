@@ -9,7 +9,7 @@ const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
 export const load: PageServerLoad = async ({ params, locals: { user } }) => {
 	if (!user) {
-		throw redirect(300, localizeHref('/login'));
+		throw redirect(303, localizeHref('/login'));
 	}
 
 	try {

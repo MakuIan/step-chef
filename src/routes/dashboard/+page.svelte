@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '$lib/components/ui/badge';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { Sparkles, ChevronDown, Check } from 'lucide-svelte';
 	import { enhance } from '$app/forms';
-	import { ChefHat } from 'lucide-svelte'; // Optional: if you use lucide icons
 	import * as m from '$lib/paraglide/messages';
+	import logo from '$lib/assets/logo.svg';
 
-	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '$lib/models';
+	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID, getModelNote } from '$lib/models';
 
 	let isSubmitting = $state(false);
 	let selectedModel = $state<string>(DEFAULT_MODEL_ID);
@@ -25,18 +28,20 @@
 			localStorage.setItem('step_chef_selected_model', newModel);
 		}
 	}
+
+	let currentModel = $derived(
+		AVAILABLE_MODELS.find((m) => m.id === selectedModel) ?? AVAILABLE_MODELS[0]
+	);
 </script>
 
-<div class="flex h-screen flex-col items-center justify-center bg-gray-50 px-4">
+<div class="flex min-h-[80vh] flex-col items-center justify-center bg-background px-4">
 	<div class="mb-8 flex flex-col items-center text-center">
-		<!-- Optional Icon/Logo -->
-		<div
-			class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-blue-600"
-		>
-			<ChefHat size={32} />
+		
+		<div class="mb-5 flex h-24 w-24 items-center justify-center rounded-2xl bg-primary/10 p-3 shadow-xs">
+			<img src={logo} alt="Step-Chef Logo" class="h-full w-full object-contain" />
 		</div>
-		<h1 class="mb-2 text-3xl font-bold text-gray-900">Step-Chef</h1>
-		<p class="text-gray-500">
+		<h1 class="mb-2 text-3xl font-bold tracking-tight text-foreground">Step-Chef</h1>
+		<p class="text-muted-foreground text-sm max-w-md">
 			{m['chat.new_chat_subtitle']()}
 		</p>
 	</div>
@@ -53,29 +58,66 @@
 			};
 		}}
 	>
+		<!-- Modern Model Selector -->
 		<div class="flex justify-end items-center gap-2">
-			<span class="text-xs font-medium text-gray-500">{m['chat.model_label']()}</span>
-			<select
-				value={selectedModel}
-				onchange={(e) => handleModelChange(e.currentTarget.value)}
-				disabled={isSubmitting}
-				class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-			>
-				{#each AVAILABLE_MODELS as modelOption (modelOption.id)}
-					<option value={modelOption.id}>
-						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{'note' in modelOption && modelOption.note ? `${modelOption.note} - ` : ''}{modelOption.provider})
-					</option>
-				{/each}
-			</select>
+			<span class="text-xs font-medium text-muted-foreground">{m['chat.model_label']()}</span>
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger
+					disabled={isSubmitting}
+					class="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+				>
+					<Sparkles class="h-3.5 w-3.5 text-primary shrink-0" />
+					<span class="truncate max-w-[180px] sm:max-w-[220px] font-semibold">{currentModel.name}</span>
+					{#if currentModel.isRecommended}
+						<Badge variant="secondary" class="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20 shrink-0 hidden sm:inline-flex">
+							{m['chat.recommended']()}
+						</Badge>
+					{/if}
+					<ChevronDown class="h-3.5 w-3.5 text-muted-foreground ml-0.5 shrink-0" />
+				</DropdownMenu.Trigger>
+
+				<DropdownMenu.Content align="end" class="w-80 sm:w-96 p-1.5">
+					<DropdownMenu.Label class="text-[11px] font-semibold text-muted-foreground px-2 py-1 uppercase tracking-wider">
+						{m['chat.model_label']()}
+					</DropdownMenu.Label>
+					<DropdownMenu.Separator class="my-1" />
+					{#each AVAILABLE_MODELS as modelOption (modelOption.id)}
+						<DropdownMenu.Item
+							onclick={() => handleModelChange(modelOption.id)}
+							class="flex items-start justify-between gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent"
+						>
+							<div class="flex flex-col min-w-0 flex-1">
+								<div class="flex items-center gap-1.5 flex-wrap">
+									<span class="font-medium text-sm text-foreground leading-snug">{modelOption.name}</span>
+									{#if modelOption.isRecommended}
+										<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">
+											{m['chat.recommended']()}
+										</span>
+									{/if}
+									{#if getModelNote(modelOption)}
+										<span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+											{getModelNote(modelOption)}
+										</span>
+									{/if}
+								</div>
+								<span class="text-xs text-muted-foreground mt-0.5">{modelOption.provider}</span>
+							</div>
+							{#if selectedModel === modelOption.id}
+								<Check class="h-4 w-4 text-primary shrink-0 mt-0.5" />
+							{/if}
+						</DropdownMenu.Item>
+					{/each}
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 		</div>
 
 		<div
-			class="flex items-center gap-2 rounded-xl border bg-white p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2"
+			class="flex items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
 		>
 			<Input
 				name="message"
 				placeholder={m['chat.new_chat_placeholder']()}
-				class="border-0 py-6 text-lg shadow-none focus-visible:ring-0 flex-1"
+				class="border-0 py-6 text-lg shadow-none focus-visible:ring-0 flex-1 bg-transparent"
 				disabled={isSubmitting}
 				required
 				autocomplete="off"
@@ -83,46 +125,44 @@
 				autocapitalize="off"
 				spellcheck="false"
 			/>
-			<Button type="submit" disabled={isSubmitting} class="h-12 px-6">
+			<Button type="submit" disabled={isSubmitting} class="h-12 px-6 font-semibold">
 				{isSubmitting ? m['chat.new_chat_starting']() : m['chat.new_chat_go']()}
 			</Button>
 		</div>
 
-		<!-- Quick Category Pills -->
-		{#snippet categoryPill(label: string, value: string, pillClass: string)}
+		
+		{#snippet categoryPill(label: string, value: string)}
 			<button
 				type="submit"
 				name="message"
 				{value}
 				disabled={isSubmitting}
-				class="rounded-full border px-3.5 py-1.5 text-xs font-medium shadow-xs transition-all {pillClass}"
+				class="transition-transform hover:scale-105"
 			>
-				{label}
+				<Badge variant="outline" class="cursor-pointer px-3.5 py-1.5 text-xs font-medium hover:bg-accent hover:text-accent-foreground border-border bg-card shadow-2xs">
+					{label}
+				</Badge>
 			</button>
 		{/snippet}
 
+		<!-- Category Pills with i18n Translations -->
 		<div class="mt-4 flex flex-wrap justify-center gap-2">
 			{@render categoryPill(
-				'🍳 Schnelle Pfannen-Idee',
-				'Schlag mir ein leckeres Hähnchen-Rezept für die Pfanne vor',
-				'border-gray-200 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50'
+				m['chat.category_skillet_title'](),
+				m['chat.category_skillet_prompt']()
 			)}
 			{@render categoryPill(
-				'🥩 Grillrezepte & BBQ',
-				'Ich möchte heute etwas Leckeres grillen! Gib mir Ideen für den Grill.',
-				'border-amber-200 bg-amber-50/50 text-amber-800 hover:border-amber-400 hover:bg-amber-100'
+				m['chat.category_grill_title'](),
+				m['chat.category_grill_prompt']()
 			)}
 			{@render categoryPill(
-				'🍸 Drinks & Cocktails mixen',
-				'Ich möchte einen erfrischenden Cocktail oder Drink mixen. Welche Zutaten brauche ich?',
-				'border-purple-200 bg-purple-50/50 text-purple-800 hover:border-purple-400 hover:bg-purple-100'
+				m['chat.category_drinks_title'](),
+				m['chat.category_drinks_prompt']()
 			)}
 			{@render categoryPill(
-				'♨️ Ofen & Backen',
-				'Ich habe Lust auf etwas Frisches aus dem Backofen.',
-				'border-orange-200 bg-orange-50/50 text-orange-800 hover:border-orange-400 hover:bg-orange-100'
+				m['chat.category_oven_title'](),
+				m['chat.category_oven_prompt']()
 			)}
 		</div>
 	</form>
 </div>
-
