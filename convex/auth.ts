@@ -72,7 +72,7 @@ export const getSession = query({
 		const auth = createAuth(ctx);
 		return await auth.api.getSession({
 			headers: new Headers({
-				cookie: `better-auth.session_token=${args.sessionToken}`
+				cookie: `better-auth.session_token=${args.sessionToken}; __Secure-better-auth.session_token=${args.sessionToken}`
 			})
 		});
 	}

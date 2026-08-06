@@ -28,7 +28,9 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	const sessionToken = event.cookies.get('better-auth.session_token');
+	const sessionToken =
+		event.cookies.get('better-auth.session_token') ||
+		event.cookies.get('__Secure-better-auth.session_token');
 	let session = null;
 
 	if (sessionToken) {
