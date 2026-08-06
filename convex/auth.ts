@@ -14,9 +14,13 @@ export const authComponent = createClient<DataModel>(components.betterAuth);
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
 	const siteUrl = process.env.SITE_URL || "http://localhost:5173";
+	const isHttps = siteUrl.startsWith("https://");
 	return betterAuth({
 		database: authComponent.adapter(ctx),
 		baseURL: siteUrl,
+		advanced: {
+			useSecureCookies: isHttps
+		},
 		trustedOrigins: [
 			"http://localhost:5173",
 			"https://step-chef.vercel.app",
