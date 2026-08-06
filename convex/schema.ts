@@ -49,6 +49,7 @@ export default defineSchema({
 		availableCookware: v.array(v.string()),
 		enabledEquipments: v.array(v.string()),
 		openrouterApiKey: v.optional(v.string()),
+		geminiApiKey: v.optional(v.string()),
 		updatedAt: v.number()
 	}).index('by_user_id', ['userId'])
 });

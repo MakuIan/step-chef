@@ -77,11 +77,15 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 		? createOpenRouter({ apiKey: userSettings.openrouterApiKey.trim() })
 		: openrouter;
 
+	const googleProvider = userSettings?.geminiApiKey?.trim()
+		? createGoogleGenerativeAI({ apiKey: userSettings.geminiApiKey.trim() })
+		: google;
+
 	function getModelInstance(requestedModel: string) {
 		if (requestedModel.includes('/') || requestedModel.includes('openrouter')) {
 			return openrouterProvider(requestedModel);
 		}
-		return google(requestedModel || 'gemini-3.5-flash-lite');
+		return googleProvider(requestedModel || 'gemini-3.5-flash-lite');
 	}
 
 	const maxStoveLevel = userSettings?.stoveMaxLevel || 9;

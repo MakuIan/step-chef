@@ -1,6 +1,7 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { X, Check, Flame, Utensils, GlassWater, CookingPot, Wrench, Key, RefreshCw, Eye, EyeOff } from 'lucide-svelte';
+	import { X, Check, Flame, Utensils, GlassWater, CookingPot, Wrench, Key, Eye, EyeOff } from 'lucide-svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { ConvexClient } from 'convex/browser';
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
@@ -19,23 +20,12 @@
 	]);
 	let enabledEquipments = $state<string[]>(['stove', 'oven', 'grill', 'barware', 'airfryer']);
 	let openrouterApiKey = $state('');
-	let showApiKey = $state(false);
+	let showOpenrouterApiKey = $state(false);
+	let geminiApiKey = $state('');
+	let showGeminiApiKey = $state(false);
 
 	let isSaving = $state(false);
 	let saveMessage = $state<string | null>(null);
-
-	let usageData = $state<{
-		hasKey: boolean;
-		keyType: 'custom' | 'system';
-		label?: string;
-		usage?: number;
-		limit?: number | null;
-		limitRemaining?: number | null;
-		isFreeTier?: boolean;
-		rateLimit?: { requests?: number; interval?: string } | null;
-		error?: string;
-	} | null>(null);
-	let isLoadingUsage = $state(false);
 
 	const convexClient = new ConvexClient(PUBLIC_CONVEX_URL);
 	const session = authClient.useSession();
@@ -59,24 +49,6 @@
 		{ id: 'airfryer', get label() { return m['settings.eq_airfryer'](); }, icon: Wrench }
 	];
 
-	async function fetchUsage() {
-		isLoadingUsage = true;
-		try {
-			const res = await fetch('/api/openrouter/usage');
-			if (res.ok) {
-				usageData = await res.json();
-			} else {
-				const err: any = await res.json();
-				usageData = { hasKey: false, keyType: 'system', error: err?.error || 'Fehler beim Laden' };
-			}
-		} catch (e: any) {
-			console.error('Error fetching OpenRouter usage:', e);
-			usageData = { hasKey: false, keyType: 'system', error: 'Netzwerkfehler beim Laden' };
-		} finally {
-			isLoadingUsage = false;
-		}
-	}
-
 	$effect(() => {
 		if (isOpen && $session.data?.user?.email) {
 			convexClient
@@ -88,11 +60,10 @@
 						availableCookware = settings.availableCookware ?? [];
 						enabledEquipments = settings.enabledEquipments ?? [];
 						openrouterApiKey = settings.openrouterApiKey ?? '';
+						geminiApiKey = settings.geminiApiKey ?? '';
 					}
 				})
 				.catch((err) => console.error('Error fetching settings:', err));
-
-			fetchUsage();
 		}
 	});
 
@@ -124,10 +95,10 @@
 				stoveType,
 				availableCookware,
 				enabledEquipments,
-				openrouterApiKey: openrouterApiKey.trim() || undefined
+				openrouterApiKey: openrouterApiKey.trim() || undefined,
+				geminiApiKey: geminiApiKey.trim() || undefined
 			});
 			saveMessage = m['settings.saved_success']();
-			fetchUsage();
 			setTimeout(() => {
 				saveMessage = null;
 				isOpen = false;
@@ -140,18 +111,87 @@
 	}
 </script>
 
+<!-- Reusable UI Snippets -->
+{#snippet sectionCard(title: string, Icon: any, iconColor: string, children: Snippet)}
+	<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
+		<h3 class="flex items-center gap-2 font-semibold text-foreground">
+			<Icon class="h-5 w-5 {iconColor}" />
+			{title}
+		</h3>
+		{@render children()}
+	</div>
+{/snippet}
+
+{#snippet selectField(id: string, label: string, children: Snippet)}
+	<div>
+		<label for={id} class="block text-xs font-medium text-muted-foreground mb-1">
+			{label}
+		</label>
+		{@render children()}
+	</div>
+{/snippet}
+
+{#snippet apiKeyInput(
+	id: string,
+	label: string,
+	value: string,
+	placeholder: string,
+	helpText: string,
+	showKey: boolean,
+	onToggle: () => void,
+	onInput: (val: string) => void
+)}
+	<div>
+		<label for={id} class="block text-xs font-medium text-muted-foreground mb-1">
+			{label}
+		</label>
+		<div class="relative flex items-center">
+			<input
+				{id}
+				type={showKey ? 'text' : 'password'}
+				{value}
+				oninput={(e) => onInput(e.currentTarget.value)}
+				{placeholder}
+				class="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+			/>
+			<button
+				type="button"
+				onclick={onToggle}
+				class="absolute right-2 text-muted-foreground hover:text-foreground p-1"
+				title={showKey ? 'Ausblenden' : 'Anzeigen'}
+			>
+				{#if showKey}
+					<EyeOff class="h-4 w-4" />
+				{:else}
+					<Eye class="h-4 w-4" />
+				{/if}
+			</button>
+		</div>
+		<p class="mt-1 text-xs text-muted-foreground">
+			{helpText}
+		</p>
+	</div>
+{/snippet}
+
 {#if isOpen}
-	
-	
-	
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+		role="button"
+		tabindex="0"
 		onclick={() => (isOpen = false)}
+		onkeydown={(e) => {
+			if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+				isOpen = false;
+			}
+		}}
 	>
-		
 		<div
 			class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl transition-all"
+			role="dialog"
+			aria-modal="true"
+			tabindex="-1"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 		>
 			<div class="flex items-start justify-between border-b border-border pb-4">
 				<div>
@@ -167,18 +207,12 @@
 			</div>
 
 			<div class="mt-6 space-y-6">
-				
-				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
-					<h3 class="flex items-center gap-2 font-semibold text-foreground">
-						<Flame class="h-5 w-5 text-orange-500" />
-						{m['settings.stove_section']()}
-					</h3>
-
+				<!-- Herdstufen & Herdtyp -->
+				{@render sectionCard(m['settings.stove_section'](), Flame, 'text-orange-500', stoveContent)}
+				{#snippet stoveContent()}
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div>
-							<label for="stove-level-select" class="block text-xs font-medium text-muted-foreground mb-1">
-								{m['settings.stove_max_level']()}
-							</label>
+						{@render selectField('stove-level-select', m['settings.stove_max_level'](), stoveLevelSelect)}
+						{#snippet stoveLevelSelect()}
 							<select
 								id="stove-level-select"
 								bind:value={stoveMaxLevel}
@@ -188,12 +222,10 @@
 								<option value={9}>{m['settings.stove_levels_9']()}</option>
 								<option value={12}>{m['settings.stove_levels_12']()}</option>
 							</select>
-						</div>
+						{/snippet}
 
-						<div>
-							<label for="stove-type-select" class="block text-xs font-medium text-muted-foreground mb-1">
-								{m['settings.stove_type']()}
-							</label>
+						{@render selectField('stove-type-select', m['settings.stove_type'](), stoveTypeSelect)}
+						{#snippet stoveTypeSelect()}
 							<select
 								id="stove-type-select"
 								bind:value={stoveType}
@@ -204,16 +236,13 @@
 								<option value="Gas">{m['settings.stove_type_gas']()}</option>
 								<option value="Elektro">{m['settings.stove_type_electric']()}</option>
 							</select>
-						</div>
+						{/snippet}
 					</div>
-				</div>
+				{/snippet}
 
-				
-				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
-					<h3 class="flex items-center gap-2 font-semibold text-foreground">
-						<CookingPot class="h-5 w-5 text-blue-500" />
-						{m['settings.cookware_section']()}
-					</h3>
+				<!-- Vorhandene Töpfe & Pfannen -->
+				{@render sectionCard(m['settings.cookware_section'](), CookingPot, 'text-blue-500', cookwareContent)}
+				{#snippet cookwareContent()}
 					<div class="flex flex-wrap gap-2">
 						{#each ALL_COOKWARE as cookware (cookware.id)}
 							{@const isSelected = availableCookware.includes(cookware.id)}
@@ -231,14 +260,11 @@
 							</button>
 						{/each}
 					</div>
-				</div>
+				{/snippet}
 
-				
-				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
-					<h3 class="flex items-center gap-2 font-semibold text-foreground">
-						<GlassWater class="h-5 w-5 text-purple-500" />
-						{m['settings.equipment_section']()}
-					</h3>
+				<!-- Zubereitungsarten & Stationen -->
+				{@render sectionCard(m['settings.equipment_section'](), GlassWater, 'text-purple-500', equipmentContent)}
+				{#snippet equipmentContent()}
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{#each ALL_EQUIPMENTS as eq (eq.id)}
 							{@const isSelected = enabledEquipments.includes(eq.id)}
@@ -256,131 +282,38 @@
 							</button>
 						{/each}
 					</div>
-				</div>
+				{/snippet}
 
-				
-				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
-					<h3 class="flex items-center gap-2 font-semibold text-foreground">
-						<Key class="h-5 w-5 text-emerald-500" />
-						{m['settings.openrouter_section']()}
-					</h3>
+				<!-- API-Schlüssel Section -->
+				{@render sectionCard(m['settings.openrouter_section'](), Key, 'text-emerald-500', apiKeysContent)}
+				{#snippet apiKeysContent()}
+					<div class="space-y-4">
+						{@render apiKeyInput(
+							'openrouter-key-input',
+							m['settings.openrouter_key_label'](),
+							openrouterApiKey,
+							m['settings.openrouter_key_placeholder'](),
+							m['settings.openrouter_key_help'](),
+							showOpenrouterApiKey,
+							() => (showOpenrouterApiKey = !showOpenrouterApiKey),
+							(val) => (openrouterApiKey = val)
+						)}
 
-					<div class="space-y-3">
-						<div>
-							<label for="openrouter-key-input" class="block text-xs font-medium text-muted-foreground mb-1">
-								{m['settings.openrouter_key_label']()}
-							</label>
-							<div class="relative flex items-center">
-								<input
-									id="openrouter-key-input"
-									type={showApiKey ? 'text' : 'password'}
-									bind:value={openrouterApiKey}
-									placeholder={m['settings.openrouter_key_placeholder']()}
-									class="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-								/>
-								<button
-									type="button"
-									onclick={() => (showApiKey = !showApiKey)}
-									class="absolute right-2 text-muted-foreground hover:text-foreground p-1"
-									title={showApiKey ? 'Ausblenden' : 'Anzeigen'}
-								>
-									{#if showApiKey}
-										<EyeOff class="h-4 w-4" />
-									{:else}
-										<Eye class="h-4 w-4" />
-									{/if}
-								</button>
-							</div>
-							<p class="mt-1 text-xs text-muted-foreground">
-								{m['settings.openrouter_key_help']()}
-							</p>
-						</div>
-
-						
-						<div class="rounded-lg border border-border bg-card p-3 space-y-2">
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-2">
-									<span class="text-xs font-medium text-muted-foreground">
-										{m['settings.openrouter_usage_title']()}
-									</span>
-									{#if usageData}
-										{#if usageData.keyType === 'custom'}
-											<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-												{m['settings.openrouter_key_custom']()}
-											</span>
-										{:else}
-											<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-												{m['settings.openrouter_key_system']()}
-											</span>
-										{/if}
-									{/if}
-								</div>
-
-								<button
-									type="button"
-									onclick={fetchUsage}
-									disabled={isLoadingUsage}
-									class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-								>
-									<RefreshCw class="h-3.5 w-3.5 {isLoadingUsage ? 'animate-spin' : ''}" />
-									{m['settings.openrouter_refresh_usage']()}
-								</button>
-							</div>
-
-							{#if isLoadingUsage && !usageData}
-								<div class="py-2 text-center text-xs text-muted-foreground animate-pulse">
-									Lade Verbrauchsdaten...
-								</div>
-							{:else if usageData?.error}
-								<div class="text-xs text-destructive">
-									{usageData.error}
-								</div>
-							{:else if usageData}
-								<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-									<div class="bg-muted/40 rounded-md p-2">
-										<div class="text-[11px] text-muted-foreground">{m['settings.openrouter_usage_used']()}</div>
-										<div class="text-sm font-semibold text-foreground font-mono">
-											${usageData.usage !== undefined ? usageData.usage.toFixed(4) : '0.0000'}
-										</div>
-									</div>
-
-									<div class="bg-muted/40 rounded-md p-2">
-										<div class="text-[11px] text-muted-foreground">{m['settings.openrouter_usage_limit']()}</div>
-										<div class="text-sm font-semibold text-foreground font-mono">
-											{usageData.limit !== null && usageData.limit !== undefined
-												? `$${usageData.limit.toFixed(2)}`
-												: 'Unbegrenzt'}
-										</div>
-									</div>
-
-									<div class="bg-muted/40 rounded-md p-2 col-span-2 sm:col-span-1">
-										<div class="text-[11px] text-muted-foreground">{m['settings.openrouter_ratelimit_label']()}</div>
-										<div class="text-sm font-semibold text-purple-600 dark:text-purple-400 font-mono">
-											{usageData.rateLimit && usageData.rateLimit.requests && usageData.rateLimit.requests > 0
-												? `${usageData.rateLimit.requests} / ${usageData.rateLimit.interval}`
-												: 'Standard (20 req/min)'}
-										</div>
-									</div>
-								</div>
-
-								{#if usageData.isFreeTier}
-									<div class="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-700 dark:text-emerald-300 space-y-1">
-										<div class="flex items-center gap-1.5 font-semibold">
-											<span>🎁</span>
-											<span>{m['settings.openrouter_freetier_badge']()}</span>
-										</div>
-										<p class="text-[11px] opacity-90 leading-relaxed">
-											{m['settings.openrouter_freetier_info']()}
-										</p>
-									</div>
-								{/if}
-							{/if}
-						</div>
+						{@render apiKeyInput(
+							'gemini-key-input',
+							m['settings.gemini_key_label'](),
+							geminiApiKey,
+							m['settings.gemini_key_placeholder'](),
+							m['settings.gemini_key_help'](),
+							showGeminiApiKey,
+							() => (showGeminiApiKey = !showGeminiApiKey),
+							(val) => (geminiApiKey = val)
+						)}
 					</div>
-				</div>
+				{/snippet}
 			</div>
 
-			
+			<!-- Save Bar -->
 			<div class="mt-6 flex items-center justify-between border-t border-border pt-4">
 				{#if saveMessage}
 					<span class="text-sm font-semibold text-green-600 dark:text-green-400">
