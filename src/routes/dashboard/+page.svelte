@@ -63,7 +63,7 @@
 			>
 				{#each AVAILABLE_MODELS as modelOption (modelOption.id)}
 					<option value={modelOption.id}>
-						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{modelOption.provider})
+						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{'note' in modelOption && modelOption.note ? `${modelOption.note} - ` : ''}{modelOption.provider})
 					</option>
 				{/each}
 			</select>
@@ -87,5 +87,42 @@
 				{isSubmitting ? m['chat.new_chat_starting']() : m['chat.new_chat_go']()}
 			</Button>
 		</div>
+
+		<!-- Quick Category Pills -->
+		{#snippet categoryPill(label: string, value: string, pillClass: string)}
+			<button
+				type="submit"
+				name="message"
+				{value}
+				disabled={isSubmitting}
+				class="rounded-full border px-3.5 py-1.5 text-xs font-medium shadow-xs transition-all {pillClass}"
+			>
+				{label}
+			</button>
+		{/snippet}
+
+		<div class="mt-4 flex flex-wrap justify-center gap-2">
+			{@render categoryPill(
+				'🍳 Schnelle Pfannen-Idee',
+				'Schlag mir ein leckeres Hähnchen-Rezept für die Pfanne vor',
+				'border-gray-200 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50'
+			)}
+			{@render categoryPill(
+				'🥩 Grillrezepte & BBQ',
+				'Ich möchte heute etwas Leckeres grillen! Gib mir Ideen für den Grill.',
+				'border-amber-200 bg-amber-50/50 text-amber-800 hover:border-amber-400 hover:bg-amber-100'
+			)}
+			{@render categoryPill(
+				'🍸 Drinks & Cocktails mixen',
+				'Ich möchte einen erfrischenden Cocktail oder Drink mixen. Welche Zutaten brauche ich?',
+				'border-purple-200 bg-purple-50/50 text-purple-800 hover:border-purple-400 hover:bg-purple-100'
+			)}
+			{@render categoryPill(
+				'♨️ Ofen & Backen',
+				'Ich habe Lust auf etwas Frisches aus dem Backofen.',
+				'border-orange-200 bg-orange-50/50 text-orange-800 hover:border-orange-400 hover:bg-orange-100'
+			)}
+		</div>
 	</form>
 </div>
+

@@ -3,6 +3,7 @@ export interface ModelOption {
 	name: string;
 	provider: 'OpenRouter' | 'Google';
 	isRecommended: boolean;
+	note?: string;
 }
 
 export const AVAILABLE_MODELS = [
@@ -13,10 +14,25 @@ export const AVAILABLE_MODELS = [
 		isRecommended: true
 	},
 	{
+		id:'cohere/north-mini-code:free',
+		name: 'North Mini Code',
+		provider: 'OpenRouter',
+		isRecommended: false,
+		note: 'langsam'
+	},
+	{
+		id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+		name: 'Nvidia Nemotron 3 Nano Omni 30B Reasoning',
+		provider: 'OpenRouter',
+		isRecommended: false,
+		note: 'sehr langsam'
+	},
+	{
 		id: 'gemini-3.5-flash-lite',
 		name: 'Gemini 3.5 Flash Lite',
 		provider: 'Google',
-		isRecommended: false
+		isRecommended: false,
+		note: 'sehr restriktiv'
 	}
 ] as const satisfies readonly ModelOption[];
 

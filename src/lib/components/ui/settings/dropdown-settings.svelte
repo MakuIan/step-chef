@@ -6,6 +6,10 @@
 	import { localizeHref, setLocale } from '$lib/paraglide/runtime';
 	import { authClient } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
+	import SettingsModal from './settings-modal.svelte';
+
+	let isSettingsOpen = $state(false);
+
 	const switchLanguage = (locale: 'de' | 'en') => {
 		setLocale(locale);
 	};
@@ -31,7 +35,7 @@
 
 	<DropdownMenu.Content class="w-56" align="end">
 		<DropdownMenu.Group>
-			<DropdownMenu.Item>
+			<DropdownMenu.Item onclick={() => (isSettingsOpen = true)}>
 				<Settings class="mr-2 h-4 w-4" />
 				<span>{m['dropdown.settings']()}</span>
 			</DropdownMenu.Item>
@@ -57,3 +61,6 @@
 		</DropdownMenu.Item>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>
+
+<SettingsModal bind:isOpen={isSettingsOpen} />
+

@@ -39,5 +39,16 @@ export default defineSchema({
 		updatedAt: v.number()
 	})
 		.index('by_user_id', ['userId'])
-		.index('by_original_chat_id', ['originalChatId'])
+		.index('by_original_chat_id', ['originalChatId']),
+
+	// 4. User Settings Table
+	userSettings: defineTable({
+		userId: v.id('users'),
+		stoveMaxLevel: v.number(),
+		stoveType: v.string(),
+		availableCookware: v.array(v.string()),
+		enabledEquipments: v.array(v.string()),
+		updatedAt: v.number()
+	}).index('by_user_id', ['userId'])
 });
+

@@ -14,20 +14,42 @@
 	import * as m from '$lib/paraglide/messages';
 	import { cleanRecipeText } from '$lib/utils';
 	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '$lib/models';
+	import { Check } from 'lucide-svelte';
 	let { data } = $props();
 
-	// type DatabaseMessage = {
-	// 	id: string;
-	// 	role: 'user' | 'assistant' | 'system' | 'data';
-	// 	content: string;
-	// 	metadata?: {
-	// 		toolCalls?: Array<{
-	// 			toolCallId: string;
-	// 			toolName: string;
-	// 			args: Record<string, any>;
-	// 		}>;
-	// 	};
-	// };
+	function getChosenRecipeTitleForMessage(msgIndex: number, recipes: Array<{ title: string }>): string | null {
+		for (let i = msgIndex + 1; i < chat.messages.length; i++) {
+			const nextMsg = chat.messages[i];
+
+			if (nextMsg.role === 'user' && nextMsg.parts) {
+				for (const p of nextMsg.parts) {
+					if (p.type === 'text' && p.text) {
+						for (const r of recipes) {
+							if (p.text.includes(r.title)) {
+								return r.title;
+							}
+						}
+					}
+				}
+			}
+
+			if (nextMsg.role === 'assistant' && nextMsg.parts) {
+				for (const p of nextMsg.parts) {
+					if (p.type === 'tool-provide_full_recipe' && (p as any).input) {
+						const fullRecipe = getFullRecipeInput((p as any).input);
+						if (fullRecipe?.title && recipes.some((r) => r.title === fullRecipe.title)) {
+							return fullRecipe.title;
+						}
+					}
+					if (p.type === 'tool-suggest_recipes') {
+						return null;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	function getSuggestRecipesInput(input: any): SuggestRecipesInput {
 		return input as SuggestRecipesInput;
 	}
@@ -370,7 +392,7 @@
 
 <div class="flex h-screen max-h-screen flex-col bg-gray-50">
 	<main class="flex-1 overflow-y-auto p-4 pb-24">
-		{#each chat.messages as message (message.id)}
+		{#each chat.messages as message, msgIdx (message.id)}
 			<div class="mb-4 flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
 				<div class="max-w-[90%]">
 					{#if message.role === 'assistant'}
@@ -387,18 +409,48 @@
 									<!-- Added (recipe.title) as the key here -->
 									{#if part.type === 'tool-suggest_recipes' && (part.state === 'input-available' || part.state === 'output-available')}
 										{@const inputData = getSuggestRecipesInput(part.input)}
+										{@const recipesList = inputData.recipes || []}
+										{@const chosenTitle = getChosenRecipeTitleForMessage(msgIdx, recipesList)}
+										{@const hasChoice = chosenTitle !== null}
+
 										<div class="mt-4 flex flex-row flex-wrap gap-4">
-											<!-- Added ?. and || [] -->
-											{#each inputData.recipes || [] as recipe, i (recipe.title)}
+											{#each recipesList as recipe, i (recipe.title)}
+												{@const isSelected = recipe.title === chosenTitle}
+												{@const isOtherDisabled = hasChoice && !isSelected}
+
 												<button
 													in:fly={{ y: 20, delay: i * 100 }}
 													onclick={() => handleRecipeSelection(recipe.title)}
-													disabled={isSelectingRecipe || chat.status === 'streaming' || chat.status === 'submitted'}
-													class="min-w-50 flex-1 rounded-xl border bg-white p-4 text-left transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+													disabled={hasChoice || isSelectingRecipe || chat.status === 'streaming' || chat.status === 'submitted'}
+													class="min-w-50 flex-1 rounded-xl border p-4 text-left transition-all {isSelected
+														? 'border-2 border-green-500 bg-green-50/60 shadow-md ring-2 ring-green-500/20'
+														: isOtherDisabled
+															? 'border-border bg-muted/40 opacity-40 grayscale cursor-not-allowed'
+															: 'border-border bg-white hover:shadow-lg hover:border-foreground/30 disabled:opacity-50'}"
 												>
-													<h4 class="font-bold">{recipe.title}</h4>
-													<p class="text-sm text-gray-500">{recipe.description}</p>
-													<div class="mt-2 text-xs">⏱ {recipe.prepTimeMinutes} Min</div>
+													<div class="flex items-center justify-between gap-2">
+														<div class="flex items-center gap-2">
+															<h4 class="font-bold {isSelected ? 'text-green-950' : ''}">{recipe.title}</h4>
+															{#if isSelected}
+																<span class="inline-flex items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+																	<Check class="h-3 w-3" />
+																	{m['chat.selected_badge']()}
+																</span>
+															{/if}
+														</div>
+
+														{#if recipe.category === 'grilling'}
+															<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{m['recipe.category_grilling']()}</span>
+														{:else if recipe.category === 'mixing'}
+															<span class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800">{m['recipe.category_mixing']()}</span>
+														{:else if recipe.category === 'baking'}
+															<span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800">{m['recipe.category_baking']()}</span>
+														{:else if recipe.category === 'airfrying'}
+															<span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">{m['recipe.category_airfrying']()}</span>
+														{/if}
+													</div>
+													<p class="mt-1 text-sm {isSelected ? 'text-green-900/80' : 'text-gray-500'}">{recipe.description}</p>
+													<div class="mt-2 text-xs {isSelected ? 'text-green-900/70' : 'text-gray-600'}">⏱ {recipe.prepTimeMinutes} Min</div>
 												</button>
 											{/each}
 										</div>
@@ -409,10 +461,21 @@
 										<!-- Safeguard: Only render if recipe actually has a title -->
 										{#if recipe?.title}
 											<div class="mt-4 space-y-4" in:slide>
-												<h3 class="text-xl font-bold">{recipe.title}</h3>
+												<div class="flex items-center gap-3">
+													<h3 class="text-xl font-bold">{recipe.title}</h3>
+													{#if recipe.category === 'grilling'}
+														<span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">{m['recipe.category_grill_recipe']()}</span>
+													{:else if recipe.category === 'mixing'}
+														<span class="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800">{m['recipe.category_drink_recipe']()}</span>
+													{:else if recipe.category === 'baking'}
+														<span class="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-800">{m['recipe.category_baking_recipe']()}</span>
+													{:else if recipe.category === 'airfrying'}
+														<span class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">{m['recipe.category_airfryer_recipe']()}</span>
+													{/if}
+												</div>
 
 												<div class="rounded-lg bg-blue-50 p-3">
-													<h4 class="mb-1 font-semibold">Zutaten:</h4>
+													<h4 class="mb-1 font-semibold">{m['recipe.ingredients']()}</h4>
 													<ul class="text-sm">
 														<!-- Added ?. and || [] -->
 														{#each recipe?.ingredients || [] as ingredient, index (index)}
@@ -431,7 +494,7 @@
 																: 'opacity-50'}"
 														>
 															<div class="flex items-start justify-between">
-																<span class="font-bold">Schritt {stepIndex + 1}</span>
+																<span class="font-bold">{m['recipe.step']({ number: stepIndex + 1 })}</span>
 																{#if step?.timerMinutes}
 																	<div class="flex flex-wrap items-center gap-2">
 																		{#if currentStepIndex === stepIndex}
@@ -514,16 +577,25 @@
 															</div>
 
 															<!-- Safely render instruction with a fallback while streaming -->
-															<p class="my-2 text-sm">{step?.instruction || 'Lade Anweisung...'}</p>
+															<p class="my-2 text-sm">{step?.instruction || m['recipe.loading_instruction']()}</p>
 
-															<div class="flex gap-2 text-xs text-gray-600">
+															<div class="flex flex-wrap gap-2 text-xs text-gray-600">
 																{#if step?.equipment}<span>🍳 {step.equipment}</span>{/if}
-																{#if step?.heatLevel}<span>🔥 Stufe: {step.heatLevel}</span>{/if}
-
-																<!-- Only check hasLid if it has actually streamed in -->
+																{#if step?.heatLevel}<span>🔥 {m['recipe.heat_level']({ level: step.heatLevel })}</span>{/if}
 																{#if step?.hasLid !== undefined}
-																	<span>{step.hasLid ? '🥘 Mit Deckel' : '🍳 Ohne Deckel'}</span>
+																	<span>{step.hasLid ? m['recipe.with_lid']() : m['recipe.without_lid']()}</span>
 																{/if}
+																{#if step?.grillZone}<span>{m['recipe.grill_zone']({ zone: step.grillZone })}</span>{/if}
+																{#if step?.grillTemperature}<span>🌡️ {step.grillTemperature}°C</span>{/if}
+																{#if step?.lidClosed !== undefined}
+																	<span>{step.lidClosed ? m['recipe.lid_closed']() : m['recipe.lid_open']()}</span>
+																{/if}
+																{#if step?.actionType}<span>{m['recipe.action']({ action: step.actionType })}</span>{/if}
+																{#if step?.iceType && step.iceType !== 'none'}<span>{m['recipe.ice']({ ice: step.iceType })}</span>{/if}
+																{#if step?.glassType}<span>{m['recipe.glass']({ glass: step.glassType })}</span>{/if}
+																{#if step?.shakeTimeSeconds}<span>⏱️ {step.shakeTimeSeconds}s</span>{/if}
+																{#if step?.temperatureCelsius}<span>🌡️ {step.temperatureCelsius}°C</span>{/if}
+																{#if step?.ovenMode}<span>♨️ {step.ovenMode}</span>{/if}
 															</div>
 
 															{#if currentStepIndex === stepIndex}
@@ -534,7 +606,7 @@
 																			class="flex-1"
 																			onclick={() => updateStep(stepIndex - 1)}
 																		>
-																			Zurück
+																			{m['recipe.btn_back']()}
 																		</Button>
 																	{/if}
 																	<Button
@@ -542,7 +614,7 @@
 																		onclick={() => updateStep(stepIndex + 1)}
 																		disabled={!step?.instruction}
 																	>
-																		Schritt erledigt
+																		{m['recipe.btn_step_done']()}
 																	</Button>
 																</div>
 															{/if}
@@ -557,7 +629,7 @@
 															variant="outline"
 															onclick={() => updateStep(currentStepIndex - 1)}
 														>
-															Zurück
+															{m['recipe.btn_back']()}
 														</Button>
 														<Button
 															class="flex-1 bg-green-600 text-white hover:bg-green-700"
@@ -641,7 +713,7 @@
 			>
 				{#each AVAILABLE_MODELS as modelOption (modelOption.id)}
 					<option value={modelOption.id}>
-						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{modelOption.provider})
+						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{'note' in modelOption && modelOption.note ? `${modelOption.note} - ` : ''}{modelOption.provider})
 					</option>
 				{/each}
 			</select>

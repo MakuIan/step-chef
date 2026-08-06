@@ -73,31 +73,60 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 		return google(requestedModel || 'gemini-3.5-flash-lite');
 	}
 
+	let userSettings = null;
+	try {
+		userSettings = await convex.query(api.userSettings.getUserSettings, { email: user.email });
+	} catch (e) {
+		console.error('Could not fetch user settings:', e);
+	}
+
+	const maxStoveLevel = userSettings?.stoveMaxLevel || 9;
+	const stoveType = userSettings?.stoveType || 'Standard';
+	const cookwareList = userSettings?.availableCookware?.length
+		? userSettings.availableCookware.join(', ')
+		: 'Pfanne, Topf, Wok';
+	const enabledEquipments = userSettings?.enabledEquipments || ['stove', 'oven', 'grill', 'barware', 'airfryer'];
+
+	const equipmentInstruction = `
+AUSTATTUNG DES NUTZERS:
+- Herdstufen-Skala: 1 bis ${maxStoveLevel} (Herdtyp: ${stoveType}). Passe alle Herdstufen-Empfehlungen genau an diese Skala an!
+- Verfügbares Kochgeschirr: ${cookwareList}.
+- Verfügbare Geräte & Zubereitungsarten: ${enabledEquipments.join(', ')}.
+
+KATEGORIEN & ZUBEREITUNGSARTEN:
+- 'cooking' (Kochen am Herd): Nutze 'applianceType': 'stove', 'heatLevel' (1-${maxStoveLevel}), 'equipment', 'hasLid'.
+- 'grilling' (Grillrezepte): Nutze 'category': 'grilling', 'applianceType': 'grill', 'grillZone' ('direkt' | 'indirekt' | 'Plancha' | 'Oberhitze'), 'grillTemperature' (°C), 'lidClosed'.
+- 'mixing' (Drinks & Cocktails mixen): Nutze 'category': 'mixing', 'applianceType': 'barware' oder 'blender', 'actionType' ('shake' | 'stir' | 'muddle' | 'blend' | 'build' | 'strain'), 'iceType' ('cubes' | 'crushed' | 'none'), 'glassType' (z.B. Highball, Coupe, Rocks, Tumbler), 'shakeTimeSeconds'.
+- 'baking' (Backen): Nutze 'category': 'baking', 'applianceType': 'oven', 'temperatureCelsius', 'ovenMode' (Umluft / Ober-Unterhitze).
+- 'airfrying' (Heißluftfritteuse): Nutze 'category': 'airfrying', 'applianceType': 'airfryer', 'temperatureCelsius'.
+`;
+
 	try {
 		const result = streamText({
 			model: getModelInstance(model),
 			messages: await convertToModelMessages(messages),
 			stopWhen: (event) => event.steps.length >= 5,
-			system: `Du bist ein professioneller, aber freundlicher Familien-Koch für die App 'Step-Chef'. 
-					WICHTIG: Wenn der User nach Rezepten fragt, DARFST DU DIE REZEPTE ODER ZUTATEN NIEMALS ALS TEXT AUFLISTEN!
+			system: `Du bist ein professioneller, flexibler Allround-Chef & Bar-Expert für die App 'Step-Chef'. 
+					WICHTIG: Wenn der User nach Rezepten, Grillideen oder Drinks fragt, DARFST DU DIE REZEPTE ODER ZUTATEN NIEMALS ALS TEXT AUFLISTEN!
 					Der Text-Teil deiner Antwort darf IMMER nur eine extrem kurze Einleitung sein.
 					${languageInstruction}
-					 Wenn der User nach etwas zu essen fragt, MUSST du das Tool 'suggest_recipes' nutzen, um 1 bis 3 Rezeptvorschläge zu machen.
-					 WICHTIG FÜR REZEPTE:
-					- Nutze immer Mengenangaben, Minuten und Herdstufen (dein Herd hat 1-9 Stufen).
-					- Gib immer die Art des Kochgeschirrs an (z.B. Wok, beschichtete Pfanne) und ob ein Deckel genutzt wird.
-					- Wenn der User ein Rezept auswählt, MUSST DU ZWINGEND das Tool 'provide_full_recipe' aufrufen! Schreibe die Details niemals als einfachen Chat-Text.
-					- STRIKTES VERBOT: Wenn du 'provide_full_recipe' aufrufst, DARFST DU DANACH KEINE Zutatenlisten, Herdstufen, Schritte, Tabellen oder Rezepttexte als Chat-Text generieren! Das Rezept wird ausschließlich über das Tool als interaktive UI angezeigt. Schreibe nach dem Tool-Aufruf NUR einen kurzen Satz (z.B. 'Viel Spaß beim Kochen! 🥢'). Generiere KEINE Trennlinien (---), Überschriften (###) oder Listen als Text!`,
+					${equipmentInstruction}
+					 Wenn der User nach Speisen oder Drinks fragt, MUSST du das Tool 'suggest_recipes' nutzen, um 1 bis 3 Vorschläge zu machen.
+					 WICHTIG FÜR REZEPTE & DRINKS:
+					- Gib immer die passende Kategorie an ('cooking', 'grilling', 'mixing', 'baking', 'airfrying').
+					- Gib die genauen Schritt-Details an (z.B. bei Herdstufen 1-${maxStoveLevel}, Grillzone/Temperatur bei Grill, Mix-Aktion/Eis/Glas bei Drinks).
+					- Wenn der User eine Option auswählt, MUSST DU ZWINGEND das Tool 'provide_full_recipe' aufrufen! Schreibe die Details niemals als einfachen Chat-Text.
+					- STRIKTES VERBOT: Wenn du 'provide_full_recipe' aufrufst, DARFST DU DANACH KEINE Zutatenlisten, Schritte, Tabellen oder Rezepttexte als Chat-Text generieren! Das Rezept wird ausschließlich über das Tool als interaktive UI angezeigt. Schreibe nach dem Tool-Aufruf NUR einen kurzen Satz (z.B. 'Viel Spaß beim Zubereiten! 🥢' oder 'Prost! 🍸'). Generiere KEINE Trennlinien (---), Überschriften (###) oder Listen als Text!`,
 			toolChoice: 'auto',
 			tools: {
 				suggest_recipes: tool({
 					description:
-						'Schlägt 1 bis 3 Rezepte basierend auf den Zutaten oder Wünschen des Users vor.',
+						'Schlägt 1 bis 3 Rezepte oder Drinks basierend auf den Wünschen des Users vor.',
 					inputSchema: suggestRecipesInputSchema,
 					execute: async () => ({ status: 'success', message: 'Rezepte wurden dem User angezeigt' })
 				}),
 				provide_full_recipe: tool({
-					description: 'Gibt das detaillierte Rezept mit Einzelschritten aus.',
+					description: 'Gibt das detaillierte Rezept oder Drink-Rezept mit Einzelschritten aus.',
 					inputSchema: fullRecipeInputSchema,
 					execute: async (args) => {
 						try {
@@ -137,12 +166,18 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 							: 'Rezept erstellt';
 				}
 
+				const sanitizedToolCalls = allToolCalls.map((tc: any) => ({
+					toolCallId: tc.toolCallId || tc.id || '',
+					toolName: tc.toolName || tc.name || '',
+					input: tc.args ?? tc.input ?? {}
+				}));
+
 				try {
 					await convex.mutation(api.chat.insertMessage, {
 						chatId,
 						role: 'assistant',
 						content: contentToSave,
-						metadata: { toolCalls: allToolCalls }
+						metadata: { toolCalls: sanitizedToolCalls }
 					});
 				} catch (err) {
 					console.error('Failed to save assistant message:', err);
