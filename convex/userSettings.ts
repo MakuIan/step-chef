@@ -30,7 +30,8 @@ export const saveUserSettings = mutation({
 		stoveMaxLevel: v.number(),
 		stoveType: v.string(),
 		availableCookware: v.array(v.string()),
-		enabledEquipments: v.array(v.string())
+		enabledEquipments: v.array(v.string()),
+		openrouterApiKey: v.optional(v.string())
 	},
 	handler: async (ctx, args) => {
 		let user = await ctx.db
@@ -59,6 +60,7 @@ export const saveUserSettings = mutation({
 				stoveType: args.stoveType,
 				availableCookware: args.availableCookware,
 				enabledEquipments: args.enabledEquipments,
+				openrouterApiKey: args.openrouterApiKey,
 				updatedAt: Date.now()
 			});
 			return existingSettings._id;
@@ -70,6 +72,7 @@ export const saveUserSettings = mutation({
 			stoveType: args.stoveType,
 			availableCookware: args.availableCookware,
 			enabledEquipments: args.enabledEquipments,
+			openrouterApiKey: args.openrouterApiKey,
 			updatedAt: Date.now()
 		});
 

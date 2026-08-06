@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { X, Check, Flame, Utensils, GlassWater, CookingPot, Wrench } from 'lucide-svelte';
+	import { X, Check, Flame, Utensils, GlassWater, CookingPot, Wrench, Key, RefreshCw, Eye, EyeOff } from 'lucide-svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { ConvexClient } from 'convex/browser';
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
@@ -18,9 +18,24 @@
 		'Edelstahlpfanne'
 	]);
 	let enabledEquipments = $state<string[]>(['stove', 'oven', 'grill', 'barware', 'airfryer']);
+	let openrouterApiKey = $state('');
+	let showApiKey = $state(false);
 
 	let isSaving = $state(false);
 	let saveMessage = $state<string | null>(null);
+
+	let usageData = $state<{
+		hasKey: boolean;
+		keyType: 'custom' | 'system';
+		label?: string;
+		usage?: number;
+		limit?: number | null;
+		limitRemaining?: number | null;
+		isFreeTier?: boolean;
+		rateLimit?: { requests?: number; interval?: string } | null;
+		error?: string;
+	} | null>(null);
+	let isLoadingUsage = $state(false);
 
 	const convexClient = new ConvexClient(PUBLIC_CONVEX_URL);
 	const session = authClient.useSession();
@@ -44,6 +59,24 @@
 		{ id: 'airfryer', get label() { return m['settings.eq_airfryer'](); }, icon: Wrench }
 	];
 
+	async function fetchUsage() {
+		isLoadingUsage = true;
+		try {
+			const res = await fetch('/api/openrouter/usage');
+			if (res.ok) {
+				usageData = await res.json();
+			} else {
+				const err: any = await res.json();
+				usageData = { hasKey: false, keyType: 'system', error: err?.error || 'Fehler beim Laden' };
+			}
+		} catch (e: any) {
+			console.error('Error fetching OpenRouter usage:', e);
+			usageData = { hasKey: false, keyType: 'system', error: 'Netzwerkfehler beim Laden' };
+		} finally {
+			isLoadingUsage = false;
+		}
+	}
+
 	$effect(() => {
 		if (isOpen && $session.data?.user?.email) {
 			convexClient
@@ -54,9 +87,12 @@
 						stoveType = settings.stoveType ?? 'Induktion';
 						availableCookware = settings.availableCookware ?? [];
 						enabledEquipments = settings.enabledEquipments ?? [];
+						openrouterApiKey = settings.openrouterApiKey ?? '';
 					}
 				})
 				.catch((err) => console.error('Error fetching settings:', err));
+
+			fetchUsage();
 		}
 	});
 
@@ -87,9 +123,11 @@
 				stoveMaxLevel,
 				stoveType,
 				availableCookware,
-				enabledEquipments
+				enabledEquipments,
+				openrouterApiKey: openrouterApiKey.trim() || undefined
 			});
 			saveMessage = m['settings.saved_success']();
+			fetchUsage();
 			setTimeout(() => {
 				saveMessage = null;
 				isOpen = false;
@@ -217,6 +255,127 @@
 								{/if}
 							</button>
 						{/each}
+					</div>
+				</div>
+
+				<!-- OpenRouter API Key & Usage Section -->
+				<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
+					<h3 class="flex items-center gap-2 font-semibold text-foreground">
+						<Key class="h-5 w-5 text-emerald-500" />
+						{m['settings.openrouter_section']()}
+					</h3>
+
+					<div class="space-y-3">
+						<div>
+							<label for="openrouter-key-input" class="block text-xs font-medium text-muted-foreground mb-1">
+								{m['settings.openrouter_key_label']()}
+							</label>
+							<div class="relative flex items-center">
+								<input
+									id="openrouter-key-input"
+									type={showApiKey ? 'text' : 'password'}
+									bind:value={openrouterApiKey}
+									placeholder={m['settings.openrouter_key_placeholder']()}
+									class="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+								/>
+								<button
+									type="button"
+									onclick={() => (showApiKey = !showApiKey)}
+									class="absolute right-2 text-muted-foreground hover:text-foreground p-1"
+									title={showApiKey ? 'Ausblenden' : 'Anzeigen'}
+								>
+									{#if showApiKey}
+										<EyeOff class="h-4 w-4" />
+									{:else}
+										<Eye class="h-4 w-4" />
+									{/if}
+								</button>
+							</div>
+							<p class="mt-1 text-xs text-muted-foreground">
+								{m['settings.openrouter_key_help']()}
+							</p>
+						</div>
+
+						<!-- Usage Display Card -->
+						<div class="rounded-lg border border-border bg-card p-3 space-y-2">
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-2">
+									<span class="text-xs font-medium text-muted-foreground">
+										{m['settings.openrouter_usage_title']()}
+									</span>
+									{#if usageData}
+										{#if usageData.keyType === 'custom'}
+											<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+												{m['settings.openrouter_key_custom']()}
+											</span>
+										{:else}
+											<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+												{m['settings.openrouter_key_system']()}
+											</span>
+										{/if}
+									{/if}
+								</div>
+
+								<button
+									type="button"
+									onclick={fetchUsage}
+									disabled={isLoadingUsage}
+									class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+								>
+									<RefreshCw class="h-3.5 w-3.5 {isLoadingUsage ? 'animate-spin' : ''}" />
+									{m['settings.openrouter_refresh_usage']()}
+								</button>
+							</div>
+
+							{#if isLoadingUsage && !usageData}
+								<div class="py-2 text-center text-xs text-muted-foreground animate-pulse">
+									Lade Verbrauchsdaten...
+								</div>
+							{:else if usageData?.error}
+								<div class="text-xs text-destructive">
+									{usageData.error}
+								</div>
+							{:else if usageData}
+								<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+									<div class="bg-muted/40 rounded-md p-2">
+										<div class="text-[11px] text-muted-foreground">{m['settings.openrouter_usage_used']()}</div>
+										<div class="text-sm font-semibold text-foreground font-mono">
+											${usageData.usage !== undefined ? usageData.usage.toFixed(4) : '0.0000'}
+										</div>
+									</div>
+
+									<div class="bg-muted/40 rounded-md p-2">
+										<div class="text-[11px] text-muted-foreground">{m['settings.openrouter_usage_limit']()}</div>
+										<div class="text-sm font-semibold text-foreground font-mono">
+											{usageData.limit !== null && usageData.limit !== undefined
+												? `$${usageData.limit.toFixed(2)}`
+												: 'Unbegrenzt'}
+										</div>
+									</div>
+
+									<div class="bg-muted/40 rounded-md p-2 col-span-2 sm:col-span-1">
+										<div class="text-[11px] text-muted-foreground">{m['settings.openrouter_ratelimit_label']()}</div>
+										<div class="text-sm font-semibold text-purple-600 dark:text-purple-400 font-mono">
+											{usageData.rateLimit && usageData.rateLimit.requests && usageData.rateLimit.requests > 0
+												? `${usageData.rateLimit.requests} / ${usageData.rateLimit.interval}`
+												: 'Standard (20 req/min)'}
+										</div>
+									</div>
+								</div>
+
+								{#if usageData.isFreeTier}
+									<div class="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-700 dark:text-emerald-300 space-y-1">
+										<div class="flex items-center gap-1.5 font-semibold">
+											<span>🎁</span>
+											<span>{m['settings.openrouter_freetier_badge']()}</span>
+										</div>
+										<p class="text-[11px] opacity-90 leading-relaxed">
+											{m['settings.openrouter_freetier_info']()}
+										</p>
+									</div>
+								{/if}
+							{/if}
+						</div>
 					</div>
 				</div>
 			</div>

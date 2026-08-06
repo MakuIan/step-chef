@@ -21,6 +21,12 @@ export const AVAILABLE_MODELS = [
 		note: 'langsam'
 	},
 	{
+		id:'nvidia/nemotron-3-ultra-550b-a55b:free',
+		name: 'Nvidia Nemotron 3 Ultra 550B',
+		provider: 'OpenRouter',
+		isRecommended: false,
+	},
+	{
 		id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
 		name: 'Nvidia Nemotron 3 Nano Omni 30B Reasoning',
 		provider: 'OpenRouter',

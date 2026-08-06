@@ -48,6 +48,7 @@ export default defineSchema({
 		stoveType: v.string(),
 		availableCookware: v.array(v.string()),
 		enabledEquipments: v.array(v.string()),
+		openrouterApiKey: v.optional(v.string()),
 		updatedAt: v.number()
 	}).index('by_user_id', ['userId'])
 });

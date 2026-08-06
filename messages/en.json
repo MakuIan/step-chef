@@ -87,7 +87,21 @@
 		"eq_airfryer": "Air Fryer 🌀",
 		"save": "Save Settings",
 		"saved_success": "Settings saved successfully!",
-		"saving": "Saving..."
+		"saving": "Saving...",
+		"openrouter_section": "OpenRouter API Key & Usage",
+		"openrouter_key_label": "Custom OpenRouter API Key (optional):",
+		"openrouter_key_placeholder": "sk-or-v1-...",
+		"openrouter_key_help": "If provided, your personal key will be used instead of the default system key.",
+		"openrouter_usage_title": "Usage Overview & Quota",
+		"openrouter_key_custom": "Custom Key Active",
+		"openrouter_key_system": "System Key (Default)",
+		"openrouter_usage_used": "Spent:",
+		"openrouter_usage_limit": "Total Limit:",
+		"openrouter_usage_remaining": "Remaining:",
+		"openrouter_freetier_badge": "Free Tier",
+		"openrouter_freetier_info": "You are on the OpenRouter Free Tier: You have 50 free requests per day (max 20 req/min). You still have room to send more prompts!",
+		"openrouter_ratelimit_label": "Request Limit:",
+		"openrouter_refresh_usage": "Refresh"
 	},
 	"recipe": {
 		"category_grilling": "🥩 Grilling",

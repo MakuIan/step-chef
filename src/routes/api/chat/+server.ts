@@ -66,18 +66,22 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 			? 'Antworte IMMER auf Deutsch. Alle Rezepttitel, Beschreibungen und Zutaten müssen in deutscher Sprache sein.'
 			: 'Always respond in English. All recipe titles, descriptions, and ingredients must be in English.';
 
-	function getModelInstance(requestedModel: string) {
-		if (requestedModel.includes('/') || requestedModel.includes('openrouter')) {
-			return openrouter(requestedModel);
-		}
-		return google(requestedModel || 'gemini-3.5-flash-lite');
-	}
-
 	let userSettings = null;
 	try {
 		userSettings = await convex.query(api.userSettings.getUserSettings, { email: user.email });
 	} catch (e) {
 		console.error('Could not fetch user settings:', e);
+	}
+
+	const openrouterProvider = userSettings?.openrouterApiKey?.trim()
+		? createOpenRouter({ apiKey: userSettings.openrouterApiKey.trim() })
+		: openrouter;
+
+	function getModelInstance(requestedModel: string) {
+		if (requestedModel.includes('/') || requestedModel.includes('openrouter')) {
+			return openrouterProvider(requestedModel);
+		}
+		return google(requestedModel || 'gemini-3.5-flash-lite');
 	}
 
 	const maxStoveLevel = userSettings?.stoveMaxLevel || 9;

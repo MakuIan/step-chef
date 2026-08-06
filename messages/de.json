@@ -85,7 +85,21 @@
 		"eq_airfryer": "Heißluftfritteuse 🌀",
 		"save": "Einstellungen speichern",
 		"saved_success": "Einstellungen erfolgreich gespeichert!",
-		"saving": "Speichern..."
+		"saving": "Speichern...",
+		"openrouter_section": "OpenRouter API Key & Verbrauch",
+		"openrouter_key_label": "Eigener OpenRouter API Key (optional):",
+		"openrouter_key_placeholder": "sk-or-v1-...",
+		"openrouter_key_help": "Wenn du deinen eigenen Key eingibst, wird dieser bevorzugt anstelle des System-Keys verwendet.",
+		"openrouter_usage_title": "Verbrauchsübersicht & Kontingent",
+		"openrouter_key_custom": "Eigener Key aktiv",
+		"openrouter_key_system": "System-Key (Standard)",
+		"openrouter_usage_used": "Verbraucht:",
+		"openrouter_usage_limit": "Gesamt-Limit:",
+		"openrouter_usage_remaining": "Verbleibend:",
+		"openrouter_freetier_badge": "Free Tier",
+		"openrouter_freetier_info": "Du nutzt den OpenRouter Free Tier: Du hast 50 kostenlose Anfragen pro Tag (max. 20 Anfragen/Min). Du kannst problemlos noch weitere Prompts senden!",
+		"openrouter_ratelimit_label": "Anfragen-Limit:",
+		"openrouter_refresh_usage": "Aktualisieren"
 	},
 	"recipe": {
 		"category_grilling": "🥩 Grillen",
