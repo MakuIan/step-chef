@@ -46,6 +46,12 @@
 		"model_label": "Modell:",
 		"recommended": "Empfohlen",
 		"quota_title": "Modell Limit / Quota erreicht",
-		"quota_error_message": "Quota für Modell \"{model}\" wurde überschritten! Bitte wähle unten ein anderes Modell oder versuche es in Kürze erneut."
+		"quota_error_message": "Quota für Modell \"{model}\" wurde überschritten! Bitte wähle unten ein anderes Modell oder versuche es in Kürze erneut.",
+		"timer_start": "⏲ {minutes} Min starten",
+		"timer_pause": "⏸ Pausieren",
+		"timer_resume": "▶ Fortfahren",
+		"timer_reset": "🔄 Zurücksetzen",
+		"timer_paused_status": "{time} (Pausiert)",
+		"timer_done_status": "00:00 (Fertig!)"
 	}
 }

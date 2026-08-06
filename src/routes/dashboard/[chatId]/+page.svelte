@@ -13,6 +13,7 @@
 	import { api } from '../../../../convex/_generated/api';
 	import * as m from '$lib/paraglide/messages';
 	import { cleanRecipeText } from '$lib/utils';
+	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '$lib/models';
 	let { data } = $props();
 
 	// type DatabaseMessage = {
@@ -81,7 +82,7 @@
 		}) as UIMessage[];
 	}
 
-	let selectedModel = $state('inclusionai/ling-3.0-flash:free');
+	let selectedModel = $state<string>(DEFAULT_MODEL_ID);
 	let errorMessageBanner = $state<string | null>(null);
 
 	function createChatInstance(messages: any[], currentChatId: string, modelName: string) {
@@ -156,11 +157,15 @@
 		}
 	});
 
+	type TimerStatus = 'idle' | 'running' | 'paused' | 'finished';
+
 	let inputValue = $state('');
 	let currentStepIndex = $state(0);
 	let currentRecipeId = $state<string | null>(null);
+	let timerStatus = $state<TimerStatus>('idle');
 	let timerEndsAt = $state<string | null>(null);
-	let remainingTime = $state<string | null>(null);
+	let timerRemainingSeconds = $state<number | null>(null);
+	let remainingTimeText = $state<string | null>(null);
 
 	const convexClient = new ConvexClient(PUBLIC_CONVEX_URL);
 
@@ -174,6 +179,8 @@
 					currentRecipeId = recipe._id;
 					currentStepIndex = recipe.currentStep;
 					timerEndsAt = recipe.activeTimerEndsAt ?? null;
+					timerRemainingSeconds = recipe.timerRemainingSeconds ?? null;
+					timerStatus = (recipe.timerStatus as TimerStatus) ?? (recipe.activeTimerEndsAt ? 'running' : 'idle');
 				}
 			}
 		);
@@ -183,36 +190,71 @@
 
 	// Effect for Handle the countdown timer logic dynamically
 	$effect(() => {
-		if (!timerEndsAt) {
-			remainingTime = null;
+		if (timerStatus === 'idle') {
+			remainingTimeText = null;
 			return;
 		}
 
-		const interval = setInterval(() => {
-			const now = new Date().getTime();
-			const end = new Date(timerEndsAt as string).getTime();
-			const distance = end - now;
-
-			if (distance <= 0) {
-				clearInterval(interval);
-				remainingTime = '00:00 (Fertig!)';
-			} else {
-				const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-				const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-				remainingTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+		if (timerStatus === 'paused') {
+			if (timerRemainingSeconds !== null) {
+				const mins = Math.floor(timerRemainingSeconds / 60);
+				const secs = timerRemainingSeconds % 60;
+				const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+				remainingTimeText = m['chat.timer_paused_status']({ time: formatted });
 			}
-		}, 1000);
+			return;
+		}
 
-		return () => clearInterval(interval);
+		if (timerStatus === 'finished') {
+			remainingTimeText = m['chat.timer_done_status']();
+			return;
+		}
+
+		if (timerStatus === 'running') {
+			if (!timerEndsAt) {
+				remainingTimeText = null;
+				return;
+			}
+
+			const updateCountdown = () => {
+				const now = Date.now();
+				const end = new Date(timerEndsAt as string).getTime();
+				const distanceMs = end - now;
+
+				if (distanceMs <= 0) {
+					timerStatus = 'finished';
+					timerRemainingSeconds = 0;
+					remainingTimeText = m['chat.timer_done_status']();
+				} else {
+					const totalSecs = Math.ceil(distanceMs / 1000);
+					timerRemainingSeconds = totalSecs;
+					const minutes = Math.floor(totalSecs / 60);
+					const seconds = totalSecs % 60;
+					remainingTimeText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+				}
+			};
+
+			updateCountdown();
+			const interval = setInterval(updateCountdown, 1000);
+
+			return () => clearInterval(interval);
+		}
 	});
 
 	async function updateStep(newIndex: number) {
 		currentStepIndex = newIndex;
+		timerStatus = 'idle';
+		timerEndsAt = null;
+		timerRemainingSeconds = null;
+		remainingTimeText = null;
+
 		if (currentRecipeId) {
 			await convexClient.mutation(api.chat.updateRecipe, {
 				recipeId: currentRecipeId,
 				currentStep: newIndex,
-				activeTimerEndsAt: null
+				activeTimerEndsAt: null,
+				timerRemainingSeconds: null,
+				timerStatus: 'idle'
 			});
 		}
 	}
@@ -255,12 +297,72 @@
 	}
 
 	async function startTimer(minutes: number) {
-		const endsAt = new Date(Date.now() + minutes * 60000).toISOString();
+		const totalSecs = minutes * 60;
+		const endsAt = new Date(Date.now() + totalSecs * 1000).toISOString();
 		timerEndsAt = endsAt;
+		timerRemainingSeconds = totalSecs;
+		timerStatus = 'running';
+
 		if (currentRecipeId) {
 			await convexClient.mutation(api.chat.updateRecipe, {
 				recipeId: currentRecipeId,
-				activeTimerEndsAt: endsAt
+				activeTimerEndsAt: endsAt,
+				timerRemainingSeconds: totalSecs,
+				timerStatus: 'running'
+			});
+		}
+	}
+
+	async function pauseTimer() {
+		if (timerStatus !== 'running') return;
+		let remainingSecs = timerRemainingSeconds ?? 0;
+		if (timerEndsAt) {
+			const distanceMs = new Date(timerEndsAt).getTime() - Date.now();
+			remainingSecs = Math.max(0, Math.ceil(distanceMs / 1000));
+		}
+		timerStatus = 'paused';
+		timerEndsAt = null;
+		timerRemainingSeconds = remainingSecs;
+
+		if (currentRecipeId) {
+			await convexClient.mutation(api.chat.updateRecipe, {
+				recipeId: currentRecipeId,
+				activeTimerEndsAt: null,
+				timerRemainingSeconds: remainingSecs,
+				timerStatus: 'paused'
+			});
+		}
+	}
+
+	async function resumeTimer() {
+		if (timerStatus !== 'paused') return;
+		const remainingSecs = timerRemainingSeconds && timerRemainingSeconds > 0 ? timerRemainingSeconds : 60;
+		const endsAt = new Date(Date.now() + remainingSecs * 1000).toISOString();
+		timerEndsAt = endsAt;
+		timerStatus = 'running';
+
+		if (currentRecipeId) {
+			await convexClient.mutation(api.chat.updateRecipe, {
+				recipeId: currentRecipeId,
+				activeTimerEndsAt: endsAt,
+				timerRemainingSeconds: remainingSecs,
+				timerStatus: 'running'
+			});
+		}
+	}
+
+	async function resetTimer() {
+		timerStatus = 'idle';
+		timerEndsAt = null;
+		timerRemainingSeconds = null;
+		remainingTimeText = null;
+
+		if (currentRecipeId) {
+			await convexClient.mutation(api.chat.updateRecipe, {
+				recipeId: currentRecipeId,
+				activeTimerEndsAt: null,
+				timerRemainingSeconds: null,
+				timerStatus: 'idle'
 			});
 		}
 	}
@@ -331,22 +433,82 @@
 															<div class="flex items-start justify-between">
 																<span class="font-bold">Schritt {stepIndex + 1}</span>
 																{#if step?.timerMinutes}
-																	<div class="flex items-center gap-2">
-																		{#if currentStepIndex === stepIndex && remainingTime}
-																			<span class="font-mono font-bold text-blue-600">
-																				{remainingTime}
-																			</span>
+																	<div class="flex flex-wrap items-center gap-2">
+																		{#if currentStepIndex === stepIndex}
+																			{#if remainingTimeText}
+																				<span class="font-mono text-sm font-bold text-blue-600">
+																					{remainingTimeText}
+																				</span>
+																			{/if}
+
+																			{#if timerStatus === 'idle'}
+																				<Button
+																					size="sm"
+																					variant="outline"
+																					onclick={() => {
+																						if (step.timerMinutes) startTimer(step.timerMinutes);
+																					}}
+																				>
+																					{m['chat.timer_start']({ minutes: step.timerMinutes })}
+																				</Button>
+																			{:else if timerStatus === 'running'}
+																				<Button
+																					size="sm"
+																					variant="outline"
+																					onclick={pauseTimer}
+																					class="border-amber-400 text-amber-700 hover:bg-amber-50"
+																				>
+																					{m['chat.timer_pause']()}
+																				</Button>
+																				<Button
+																					size="sm"
+																					variant="ghost"
+																					onclick={resetTimer}
+																					class="text-gray-500 hover:text-gray-700"
+																				>
+																					{m['chat.timer_reset']()}
+																				</Button>
+																			{:else if timerStatus === 'paused'}
+																				<Button
+																					size="sm"
+																					variant="outline"
+																					onclick={resumeTimer}
+																					class="border-green-500 text-green-700 hover:bg-green-50"
+																				>
+																					{m['chat.timer_resume']()}
+																				</Button>
+																				<Button
+																					size="sm"
+																					variant="ghost"
+																					onclick={resetTimer}
+																					class="text-gray-500 hover:text-gray-700"
+																				>
+																					{m['chat.timer_reset']()}
+																				</Button>
+																			{:else if timerStatus === 'finished'}
+																				<Button
+																					size="sm"
+																					variant="outline"
+																					onclick={() => {
+																						if (step.timerMinutes) startTimer(step.timerMinutes);
+																					}}
+																				>
+																					{m['chat.timer_start']({ minutes: step.timerMinutes })}
+																				</Button>
+																				<Button
+																					size="sm"
+																					variant="ghost"
+																					onclick={resetTimer}
+																					class="text-gray-500 hover:text-gray-700"
+																				>
+																					{m['chat.timer_reset']()}
+																				</Button>
+																			{/if}
+																		{:else}
+																			<Button size="sm" variant="outline" disabled>
+																				⏲ {step.timerMinutes} Min
+																			</Button>
 																		{/if}
-																		<Button
-																			size="sm"
-																			variant="outline"
-																			onclick={() => {
-																				if (step.timerMinutes) startTimer(step.timerMinutes);
-																			}}
-																			disabled={currentStepIndex !== stepIndex}
-																		>
-																			⏲ {step.timerMinutes} Min starten
-																		</Button>
 																	</div>
 																{/if}
 															</div>
@@ -477,8 +639,11 @@
 				disabled={chat.status === 'streaming' || chat.status === 'submitted'}
 				class="h-9 rounded-lg border border-input bg-white px-3 py-1 text-xs font-medium text-foreground shadow-xs outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:opacity-50"
 			>
-				<option value="inclusionai/ling-3.0-flash:free">Ling 3.0 Flash ({m['chat.recommended']()} - OpenRouter)</option>
-				<option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Google)</option>
+				{#each AVAILABLE_MODELS as modelOption (modelOption.id)}
+					<option value={modelOption.id}>
+						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{modelOption.provider})
+					</option>
+				{/each}
 			</select>
 
 			<Input

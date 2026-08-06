@@ -8,12 +8,12 @@ import { convertToModelMessages, streamText, tool, type UIMessage } from 'ai';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../convex/_generated/api';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { DEFAULT_MODEL_ID, type ModelId } from '$lib/models';
 
 const google = createGoogleGenerativeAI({
 	apiKey: GOOGLE_API_KEY
 });
 const openrouter = createOpenRouter({ apiKey: OPENROUTER_API_KEY });
-const openrouterModel = 'inclusionai/ling-3.0-flash:free'
 
 const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
@@ -28,8 +28,8 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 		messages,
 		language,
 		chatId,
-		model = 'inclusionai/ling-3.0-flash:free'
-	}: { messages: UIMessage[]; language: 'de' | 'en'; chatId: string; model?: string } = await request.json();
+		model = DEFAULT_MODEL_ID
+	}: { messages: UIMessage[]; language: 'de' | 'en'; chatId: string; model?: ModelId | string } = await request.json();
 
 	const latestMessage = messages[messages.length - 1];
 	if (latestMessage && latestMessage.role === 'user') {

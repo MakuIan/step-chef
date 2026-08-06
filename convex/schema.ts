@@ -33,6 +33,8 @@ export default defineSchema({
 		language: v.string(),
 		steps: v.any(), // RecipeStep[] from the app
 		activeTimerEndsAt: v.optional(v.string()),
+		timerRemainingSeconds: v.optional(v.number()),
+		timerStatus: v.optional(v.string()),
 		originalChatId: v.optional(v.id('chats')),
 		updatedAt: v.number()
 	})

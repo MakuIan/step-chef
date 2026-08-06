@@ -5,13 +5,17 @@
 	import { ChefHat } from 'lucide-svelte'; // Optional: if you use lucide icons
 	import * as m from '$lib/paraglide/messages';
 
+	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '$lib/models';
+
 	let isSubmitting = $state(false);
-	let selectedModel = $state('gemini-3.5-flash-lite');
+	let selectedModel = $state<string>(DEFAULT_MODEL_ID);
 
 	$effect(() => {
 		if (typeof window !== 'undefined') {
 			const saved = localStorage.getItem('step_chef_selected_model');
-			if (saved) selectedModel = saved;
+			if (saved && AVAILABLE_MODELS.some((m) => m.id === saved)) {
+				selectedModel = saved;
+			}
 		}
 	});
 
@@ -50,14 +54,18 @@
 		}}
 	>
 		<div class="flex justify-end items-center gap-2">
-			<span class="text-xs font-medium text-gray-500">Modell:</span>
+			<span class="text-xs font-medium text-gray-500">{m['chat.model_label']()}</span>
 			<select
 				value={selectedModel}
 				onchange={(e) => handleModelChange(e.currentTarget.value)}
 				disabled={isSubmitting}
 				class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
 			>
-				<option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Google)</option>
+				{#each AVAILABLE_MODELS as modelOption (modelOption.id)}
+					<option value={modelOption.id}>
+						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{modelOption.provider})
+					</option>
+				{/each}
 			</select>
 		</div>
 

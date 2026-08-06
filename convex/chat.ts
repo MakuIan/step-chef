@@ -198,7 +198,9 @@ export const updateRecipe = mutation({
 	args: {
 		recipeId: v.string(),
 		currentStep: v.optional(v.number()),
-		activeTimerEndsAt: v.optional(v.union(v.string(), v.null()))
+		activeTimerEndsAt: v.optional(v.union(v.string(), v.null())),
+		timerRemainingSeconds: v.optional(v.union(v.number(), v.null())),
+		timerStatus: v.optional(v.union(v.string(), v.null()))
 	},
 	handler: async (ctx, args) => {
 		const recipeId = ctx.db.normalizeId('recipes', args.recipeId);
@@ -211,6 +213,12 @@ export const updateRecipe = mutation({
 		}
 		if (args.activeTimerEndsAt !== undefined) {
 			updates.activeTimerEndsAt = args.activeTimerEndsAt ?? undefined;
+		}
+		if (args.timerRemainingSeconds !== undefined) {
+			updates.timerRemainingSeconds = args.timerRemainingSeconds ?? undefined;
+		}
+		if (args.timerStatus !== undefined) {
+			updates.timerStatus = args.timerStatus ?? undefined;
 		}
 		await ctx.db.patch(recipeId, updates);
 	}
