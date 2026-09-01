@@ -2,14 +2,17 @@ import type { RequestHandler } from './$types';
 import { PUBLIC_CONVEX_SITE_URL } from '$env/static/public';
 
 export const fallback: RequestHandler = async ({ request, params, url }) => {
-	// Construct the target Convex URL
-	const targetUrl = new URL(`${PUBLIC_CONVEX_SITE_URL}/api/auth/${params.all}${url.search}`);
+	// Construct the target Convex URL safely without duplicate slashes
+	const baseUrl = PUBLIC_CONVEX_SITE_URL.replace(/\/+$/, '');
+	const targetUrl = new URL(`${baseUrl}/api/auth/${params.all}${url.search}`);
 
 	// Clone the request headers and ensure host forwarding headers are present
 	const headers = new Headers(request.headers);
+	headers.set('host', targetUrl.host);
 	headers.set('x-forwarded-host', url.host);
 	headers.set('x-forwarded-proto', url.protocol.replace(':', ''));
-	headers.delete('host');
+	headers.set('x-better-auth-forwarded-host', url.host);
+	headers.set('x-better-auth-forwarded-proto', url.protocol.replace(':', ''));
 	headers.delete('connection');
 	headers.delete('accept-encoding');
 

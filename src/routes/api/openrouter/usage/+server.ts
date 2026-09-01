@@ -4,7 +4,7 @@ import { type RequestHandler, json } from '@sveltejs/kit';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 
-const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
+const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL.replace(/\/+$/, ''));
 
 export const GET: RequestHandler = async ({ locals: { user } }) => {
 	if (!user) {

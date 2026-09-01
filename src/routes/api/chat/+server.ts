@@ -15,7 +15,7 @@ const google = createGoogleGenerativeAI({
 });
 const openrouter = createOpenRouter({ apiKey: OPENROUTER_API_KEY });
 
-const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
+const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL.replace(/\/+$/, ''));
 
 export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 	console.log('🚀 API Route /api/chat wurde aufgerufen!');

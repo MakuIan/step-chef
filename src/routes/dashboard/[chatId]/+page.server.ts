@@ -5,7 +5,7 @@ import { ConvexHttpClient } from 'convex/browser';
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { api } from '../../../../convex/_generated/api';
 
-const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
+const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL.replace(/\/+$/, ''));
 
 export const load: PageServerLoad = async ({ params, locals: { user } }) => {
 	if (!user) {

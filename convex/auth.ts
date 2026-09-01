@@ -19,6 +19,12 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 		database: authComponent.adapter(ctx),
 		baseURL: siteUrl,
 		secret: process.env.BETTER_AUTH_SECRET,
+		account: {
+			accountLinking: {
+				enabled: true,
+				trustedProviders: ["google", "facebook"]
+			}
+		},
 		advanced: {
 			useSecureCookies: isHttps
 		},

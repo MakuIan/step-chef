@@ -6,7 +6,7 @@ import { ConvexHttpClient } from 'convex/browser';
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { api } from '../convex/_generated/api';
 
-const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
+const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL.replace(/\/+$/, ''));
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
@@ -29,8 +29,8 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	}
 
 	const sessionToken =
-		event.cookies.get('better-auth.session_token') ||
-		event.cookies.get('__Secure-better-auth.session_token');
+		event.cookies.get('__Secure-better-auth.session_token') ||
+		event.cookies.get('better-auth.session_token');
 	let session = null;
 
 	if (sessionToken) {
