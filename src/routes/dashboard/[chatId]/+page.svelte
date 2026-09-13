@@ -407,11 +407,11 @@
 
 	let messagesContainer = $state<HTMLElement | null>(null);
 
-	function scrollToBottom() {
+	function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
 		if (messagesContainer) {
 			messagesContainer.scrollTo({
 				top: messagesContainer.scrollHeight,
-				behavior: 'smooth'
+				behavior
 			});
 		}
 	}
@@ -419,7 +419,7 @@
 	$effect(() => {
 		if (chat.messages.length || chat.status) {
 			requestAnimationFrame(() => {
-				scrollToBottom();
+				scrollToBottom('instant');
 			});
 		}
 	});

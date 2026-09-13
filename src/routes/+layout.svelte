@@ -11,7 +11,7 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<main class="p-8">
+<main class="h-full w-full">
 	{@render children()}
 
 	<div style="display:none">

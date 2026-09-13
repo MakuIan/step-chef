@@ -151,8 +151,11 @@
 			{#if isSidebarOpen}
 				<ul class="flex flex-col gap-1">
 					{#each data.chats as chat (chat._id)}
+						{@const isActive = page.params.chatId === chat._id}
 						<li
-							class="group relative flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-sm transition-colors hover:bg-accent text-foreground"
+							class="group relative flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-sm transition-all duration-150 {isActive
+								? 'bg-accent font-medium text-accent-foreground shadow-xs'
+								: 'text-foreground hover:bg-accent/60'}"
 						>
 							{#if editingChatId === chat._id}
 								<div class="flex w-full items-center gap-2">
@@ -189,7 +192,7 @@
 							{:else}
 								<a
 									href={localizeHref(`/dashboard/${chat._id}`)}
-									class="flex-1 truncate font-medium text-xs sm:text-sm"
+									class="flex-1 truncate text-xs sm:text-sm {isActive ? 'font-semibold text-accent-foreground' : 'font-medium'}"
 								>
 									{chat.title}
 								</a>
@@ -223,9 +226,12 @@
 			{:else}
 				<div class="flex flex-col items-center gap-2 pt-1">
 					{#each data.chats as chat (chat._id)}
+						{@const isActive = page.params.chatId === chat._id}
 						<a
 							href={localizeHref(`/dashboard/${chat._id}`)}
-							class="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+							class="flex h-9 w-9 items-center justify-center rounded-lg transition-colors {isActive
+								? 'bg-accent text-accent-foreground ring-1 ring-border shadow-xs'
+								: 'text-muted-foreground hover:bg-accent hover:text-foreground'}"
 							title={chat.title}
 						>
 							<MessageSquare class="h-4 w-4" />
@@ -252,18 +258,21 @@
 				? 'md:hidden'
 				: 'flex'}"
 		>
-			<div class="flex items-center gap-3">
+			<div class="flex items-center gap-3 min-w-0">
 				<Button
 					variant="ghost"
 					size="icon"
 					onclick={toggleSidebar}
-					class="h-8 w-8 text-muted-foreground hover:text-foreground"
+					class="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
 					title="Sidebar ausklappen"
 				>
 					<PanelLeftOpen class="h-4 w-4" />
 				</Button>
 				{#if !isSidebarOpen}
-					<span class="text-sm font-semibold text-foreground">Step-Chef</span>
+					{@const currentChat = data.chats.find((c) => c._id === page.params.chatId)}
+					<span class="text-sm font-semibold text-foreground truncate">
+						{currentChat ? currentChat.title : 'Step-Chef'}
+					</span>
 				{/if}
 			</div>
 		</header>
