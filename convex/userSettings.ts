@@ -32,7 +32,8 @@ export const saveUserSettings = mutation({
 		availableCookware: v.array(v.string()),
 		enabledEquipments: v.array(v.string()),
 		openrouterApiKey: v.optional(v.string()),
-		geminiApiKey: v.optional(v.string())
+		geminiApiKey: v.optional(v.string()),
+		groqApiKey: v.optional(v.string())
 	},
 	handler: async (ctx, args) => {
 		let user = await ctx.db
@@ -63,6 +64,7 @@ export const saveUserSettings = mutation({
 				enabledEquipments: args.enabledEquipments,
 				openrouterApiKey: args.openrouterApiKey,
 				geminiApiKey: args.geminiApiKey,
+				groqApiKey: args.groqApiKey,
 				updatedAt: Date.now()
 			});
 			return existingSettings._id;
@@ -76,6 +78,7 @@ export const saveUserSettings = mutation({
 			enabledEquipments: args.enabledEquipments,
 			openrouterApiKey: args.openrouterApiKey,
 			geminiApiKey: args.geminiApiKey,
+			groqApiKey: args.groqApiKey,
 			updatedAt: Date.now()
 		});
 

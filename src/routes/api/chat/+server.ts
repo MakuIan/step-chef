@@ -1,5 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { GOOGLE_API_KEY, OPENROUTER_API_KEY } from '$env/static/private';
+import { createGroq } from '@ai-sdk/groq';
+import { GOOGLE_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY } from '$env/static/private';
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { type RequestHandler } from '@sveltejs/kit';
 import { suggestRecipesInputSchema, fullRecipeInputSchema } from '$lib/schemas';
@@ -14,6 +15,7 @@ const google = createGoogleGenerativeAI({
 	apiKey: GOOGLE_API_KEY
 });
 const openrouter = createOpenRouter({ apiKey: OPENROUTER_API_KEY });
+const groq = createGroq({ apiKey: GROQ_API_KEY });
 
 const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL.replace(/\/+$/, ''));
 
@@ -29,13 +31,18 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 		language,
 		chatId,
 		model = DEFAULT_MODEL_ID
-	}: { messages: UIMessage[]; language: 'de' | 'en'; chatId: string; model?: ModelId | string } = await request.json();
+	}: {
+		messages: UIMessage[];
+		language: 'de' | 'en';
+		chatId: string;
+		model?: ModelId | string;
+	} = await request.json();
 
 	const latestMessage = messages[messages.length - 1];
 	if (latestMessage && latestMessage.role === 'user') {
 		let extractedContent = '';
 		if (latestMessage.parts && latestMessage.parts.length > 0) {
-			const textPart = latestMessage.parts.find((p: any) => p.type === 'text');
+			const textPart = latestMessage.parts.find((p) => p.type === 'text');
 			if (textPart && textPart.type === 'text') extractedContent = textPart.text;
 		}
 		if (!extractedContent) {
@@ -81,7 +88,22 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 		? createGoogleGenerativeAI({ apiKey: userSettings.geminiApiKey.trim() })
 		: google;
 
+	const groqProvider = userSettings?.groqApiKey?.trim()
+		? createGroq({ apiKey: userSettings.groqApiKey.trim() })
+		: groq;
+
 	function getModelInstance(requestedModel: string) {
+		if (requestedModel.startsWith('groq/') || requestedModel.startsWith('groq:')) {
+			const actualModel = requestedModel.replace(/^groq[/:]/, '');
+			return groqProvider(actualModel);
+		}
+		if (
+			requestedModel.startsWith('openai/gpt-oss') ||
+			requestedModel.startsWith('qwen/') ||
+			requestedModel.startsWith('allam-')
+		) {
+			return groqProvider(requestedModel);
+		}
 		if (requestedModel.includes('/') || requestedModel.includes('openrouter')) {
 			return openrouterProvider(requestedModel);
 		}
@@ -93,7 +115,13 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
 	const cookwareList = userSettings?.availableCookware?.length
 		? userSettings.availableCookware.join(', ')
 		: 'Pfanne, Topf, Wok';
-	const enabledEquipments = userSettings?.enabledEquipments || ['stove', 'oven', 'grill', 'barware', 'airfryer'];
+	const enabledEquipments = userSettings?.enabledEquipments || [
+		'stove',
+		'oven',
+		'grill',
+		'barware',
+		'airfryer'
+	];
 
 	const equipmentInstruction = `
 AUSTATTUNG DES NUTZERS:
@@ -174,10 +202,10 @@ KATEGORIEN & ZUBEREITUNGSARTEN:
 							: 'Rezept erstellt';
 				}
 
-				const sanitizedToolCalls = allToolCalls.map((tc: any) => ({
-					toolCallId: tc.toolCallId || tc.id || '',
-					toolName: tc.toolName || tc.name || '',
-					input: tc.args ?? tc.input ?? {}
+				const sanitizedToolCalls = allToolCalls.map((tc) => ({
+					toolCallId: tc.toolCallId,
+					toolName: tc.toolName,
+					input: tc.input ?? {}
 				}));
 
 				try {
@@ -194,12 +222,27 @@ KATEGORIEN & ZUBEREITUNGSARTEN:
 		});
 
 		return result.toUIMessageStreamResponse();
-	} catch (err: any) {
+	} catch (err: unknown) {
 		console.error('🚀 Error in /api/chat streamText:', err);
+		const message =
+			err instanceof Error
+				? err.message
+				: typeof err === 'object' && err !== null && 'message' in err
+					? String((err as { message: unknown }).message)
+					: 'Quota exceeded or AI API Error';
+
+		const code =
+			typeof err === 'object' &&
+			err !== null &&
+			'status' in err &&
+			typeof (err as { status: unknown }).status === 'number'
+				? (err as { status: number }).status
+				: 429;
+
 		return new Response(
 			JSON.stringify({
-				error: err?.message || 'Quota exceeded or AI API Error',
-				code: err?.status || 429
+				error: message,
+				code
 			}),
 			{
 				status: 429,

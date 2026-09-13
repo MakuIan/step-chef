@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { Chat } from '@ai-sdk/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -11,13 +12,18 @@
 	import { ConvexClient } from 'convex/browser';
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
 	import { api } from '../../../../convex/_generated/api';
+	import type { Doc, Id } from '../../../../convex/_generated/dataModel';
 	import * as m from '$lib/paraglide/messages';
 	import { cleanRecipeText } from '$lib/utils';
-	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID, getModelNote } from '$lib/models';
-	import { Check } from 'lucide-svelte';
+	import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '$lib/models';
+	import ModelSelector from '$lib/components/model-selector.svelte';
+	import { Check, Send } from 'lucide-svelte';
 	let { data } = $props();
 
-	function getChosenRecipeTitleForMessage(msgIndex: number, recipes: Array<{ title: string }>): string | null {
+	function getChosenRecipeTitleForMessage(
+		msgIndex: number,
+		recipes: Array<{ title: string }>
+	): string | null {
 		for (let i = msgIndex + 1; i < chat.messages.length; i++) {
 			const nextMsg = chat.messages[i];
 
@@ -35,8 +41,8 @@
 
 			if (nextMsg.role === 'assistant' && nextMsg.parts) {
 				for (const p of nextMsg.parts) {
-					if (p.type === 'tool-provide_full_recipe' && (p as any).input) {
-						const fullRecipe = getFullRecipeInput((p as any).input);
+					if (p.type === 'tool-provide_full_recipe' && p.input) {
+						const fullRecipe = getFullRecipeInput(p.input);
 						if (fullRecipe?.title && recipes.some((r) => r.title === fullRecipe.title)) {
 							return fullRecipe.title;
 						}
@@ -50,27 +56,27 @@
 		return null;
 	}
 
-	function getSuggestRecipesInput(input: any): SuggestRecipesInput {
+	function getSuggestRecipesInput(input: unknown): SuggestRecipesInput {
 		return input as SuggestRecipesInput;
 	}
-	function getFullRecipeInput(input: any): FullRecipeInput {
+	function getFullRecipeInput(input: unknown): FullRecipeInput {
 		return input as FullRecipeInput;
 	}
-	function getInitialMessages(msgs: any[]): UIMessage[] {
+	function getInitialMessages(msgs: Doc<'chatMessages'>[]): UIMessage[] {
 		return msgs.map((msg) => {
 			const metadata = msg.metadata as
 				| {
 						toolCalls?: Array<{
 							toolCallId: string;
 							toolName: string;
-							input?: any;
-							args?: any;
+							input?: unknown;
+							args?: unknown;
 						}>;
 				  }
 				| null
 				| undefined;
 
-			const parts: any[] = [];
+			const parts: UIMessage['parts'] = [];
 			if (msg.content && msg.content.trim() !== '') {
 				const cleanedContent = cleanRecipeText(msg.content);
 				if (cleanedContent) {
@@ -86,7 +92,7 @@
 					const rawInput = tc.args ?? tc.input ?? {};
 					const parsedArgs = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;
 					return {
-						type: `tool-${tc.toolName}` as any,
+						type: `tool-${tc.toolName}`,
 						toolCallId: tc.toolCallId,
 						state: 'output-available',
 						input: parsedArgs,
@@ -94,10 +100,10 @@
 					};
 				}) || [];
 
-			parts.push(...toolParts);
+			parts.push(...(toolParts as unknown as UIMessage['parts']));
 
 			return {
-				id: msg._id || msg.id,
+				id: msg._id,
 				role: msg.role as 'user' | 'assistant' | 'system' | 'data',
 				parts: parts
 			};
@@ -107,7 +113,11 @@
 	let selectedModel = $state<string>(DEFAULT_MODEL_ID);
 	let errorMessageBanner = $state<string | null>(null);
 
-	function createChatInstance(messages: any[], currentChatId: string, modelName: string) {
+	function createChatInstance(
+		messages: Doc<'chatMessages'>[],
+		currentChatId: string,
+		modelName: string
+	) {
 		console.log(`messages:${messages} with type ${typeof messages}, model: ${modelName}`);
 		return new Chat({
 			messages: getInitialMessages(messages),
@@ -138,12 +148,16 @@
 	}
 
 	let currentChatId = page.params.chatId as string;
-	let chat = $state(createChatInstance(data.messages, currentChatId, selectedModel));
+	let chat = $state(untrack(() => createChatInstance(data.messages, currentChatId, selectedModel)));
 
 	$effect(() => {
 		if (typeof window !== 'undefined') {
 			const savedModel = localStorage.getItem('step_chef_selected_model');
-			if (savedModel && savedModel !== selectedModel) {
+			if (
+				savedModel &&
+				savedModel !== selectedModel &&
+				AVAILABLE_MODELS.some((m) => m.id === savedModel)
+			) {
 				selectedModel = savedModel;
 				chat = createChatInstance(data.messages, currentChatId, selectedModel);
 			}
@@ -202,7 +216,8 @@
 					currentStepIndex = recipe.currentStep;
 					timerEndsAt = recipe.activeTimerEndsAt ?? null;
 					timerRemainingSeconds = recipe.timerRemainingSeconds ?? null;
-					timerStatus = (recipe.timerStatus as TimerStatus) ?? (recipe.activeTimerEndsAt ? 'running' : 'idle');
+					timerStatus =
+						(recipe.timerStatus as TimerStatus) ?? (recipe.activeTimerEndsAt ? 'running' : 'idle');
 				}
 			}
 		);
@@ -307,7 +322,7 @@
 			});
 
 			await convexClient.mutation(api.chat.updateTitle, {
-				chatId: page.params.chatId as any,
+				chatId: page.params.chatId as Id<'chats'>,
 				title: selectedRecipeTitle
 			});
 			await invalidateAll();
@@ -358,7 +373,8 @@
 
 	async function resumeTimer() {
 		if (timerStatus !== 'paused') return;
-		const remainingSecs = timerRemainingSeconds && timerRemainingSeconds > 0 ? timerRemainingSeconds : 60;
+		const remainingSecs =
+			timerRemainingSeconds && timerRemainingSeconds > 0 ? timerRemainingSeconds : 60;
 		const endsAt = new Date(Date.now() + remainingSecs * 1000).toISOString();
 		timerEndsAt = endsAt;
 		timerStatus = 'running';
@@ -388,25 +404,44 @@
 			});
 		}
 	}
+
+	let messagesContainer = $state<HTMLElement | null>(null);
+
+	function scrollToBottom() {
+		if (messagesContainer) {
+			messagesContainer.scrollTo({
+				top: messagesContainer.scrollHeight,
+				behavior: 'smooth'
+			});
+		}
+	}
+
+	$effect(() => {
+		if (chat.messages.length || chat.status) {
+			requestAnimationFrame(() => {
+				scrollToBottom();
+			});
+		}
+	});
 </script>
 
-<div class="flex h-screen max-h-screen flex-col bg-gray-50">
-	<main class="flex-1 overflow-y-auto p-4 pb-24">
-		{#each chat.messages as message, msgIdx (message.id)}
-			<div class="mb-4 flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
-				<div class="max-w-[90%]">
-					{#if message.role === 'assistant'}
-						<Card>
-							<CardContent class="p-4">
+<div class="flex flex-1 flex-col min-h-0 h-full bg-background overflow-hidden">
+	<main bind:this={messagesContainer} class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 pb-6">
+		<div class="mx-auto flex max-w-4xl w-full flex-col gap-5">
+			{#each chat.messages as message, msgIdx (message.id)}
+				<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} w-full">
+					<div class={message.role === 'user' ? 'max-w-[85%] sm:max-w-[75%]' : 'w-full'}>
+						{#if message.role === 'assistant'}
+							<Card class="border-border bg-card shadow-2xs">
+								<CardContent class="p-4 sm:p-5">
 								{#each message.parts as part, index (index)}
 									{#if part.type === 'text'}
 										{@const cleaned = cleanRecipeText(part.text)}
 										{#if cleaned}
-											<p class="whitespace-pre-line text-sm text-gray-700">{cleaned}</p>
+											<p class="text-sm sm:text-base whitespace-pre-line text-foreground/90 leading-relaxed">{cleaned}</p>
 										{/if}
 									{/if}
 
-									
 									{#if part.type === 'tool-suggest_recipes' && (part.state === 'input-available' || part.state === 'output-available')}
 										{@const inputData = getSuggestRecipesInput(part.input)}
 										{@const recipesList = inputData.recipes || []}
@@ -421,18 +456,25 @@
 												<button
 													in:fly={{ y: 20, delay: i * 100 }}
 													onclick={() => handleRecipeSelection(recipe.title)}
-													disabled={hasChoice || isSelectingRecipe || chat.status === 'streaming' || chat.status === 'submitted'}
+													disabled={hasChoice ||
+														isSelectingRecipe ||
+														chat.status === 'streaming' ||
+														chat.status === 'submitted'}
 													class="min-w-50 flex-1 rounded-xl border p-4 text-left transition-all {isSelected
 														? 'border-2 border-green-500 bg-green-50/60 shadow-md ring-2 ring-green-500/20'
 														: isOtherDisabled
-															? 'border-border bg-muted/40 opacity-40 grayscale cursor-not-allowed'
-															: 'border-border bg-white hover:shadow-lg hover:border-foreground/30 disabled:opacity-50'}"
+															? 'cursor-not-allowed border-border bg-muted/40 opacity-40 grayscale'
+															: 'border-border bg-card hover:border-foreground/30 hover:shadow-md disabled:opacity-50'}"
 												>
 													<div class="flex items-center justify-between gap-2">
 														<div class="flex items-center gap-2">
-															<h4 class="font-bold {isSelected ? 'text-green-950' : ''}">{recipe.title}</h4>
+															<h4 class="font-bold {isSelected ? 'text-green-950' : ''}">
+																{recipe.title}
+															</h4>
 															{#if isSelected}
-																<span class="inline-flex items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+																<span
+																	class="inline-flex items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs"
+																>
 																	<Check class="h-3 w-3" />
 																	{m['chat.selected_badge']()}
 																</span>
@@ -440,17 +482,41 @@
 														</div>
 
 														{#if recipe.category === 'grilling'}
-															<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{m['recipe.category_grilling']()}</span>
+															<span
+																class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800"
+																>{m['recipe.category_grilling']()}</span
+															>
 														{:else if recipe.category === 'mixing'}
-															<span class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800">{m['recipe.category_mixing']()}</span>
+															<span
+																class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800"
+																>{m['recipe.category_mixing']()}</span
+															>
 														{:else if recipe.category === 'baking'}
-															<span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800">{m['recipe.category_baking']()}</span>
+															<span
+																class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800"
+																>{m['recipe.category_baking']()}</span
+															>
 														{:else if recipe.category === 'airfrying'}
-															<span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">{m['recipe.category_airfrying']()}</span>
+															<span
+																class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800"
+																>{m['recipe.category_airfrying']()}</span
+															>
 														{/if}
 													</div>
-													<p class="mt-1 text-sm {isSelected ? 'text-green-900/80' : 'text-gray-500'}">{recipe.description}</p>
-													<div class="mt-2 text-xs {isSelected ? 'text-green-900/70' : 'text-gray-600'}">⏱ {recipe.prepTimeMinutes} Min</div>
+													<p
+														class="mt-1 text-sm {isSelected
+															? 'text-green-900/80'
+															: 'text-muted-foreground'}"
+													>
+														{recipe.description}
+													</p>
+													<div
+														class="mt-2 text-xs {isSelected
+															? 'text-green-900/70'
+															: 'text-muted-foreground'}"
+													>
+														⏱ {recipe.prepTimeMinutes} Min
+													</div>
 												</button>
 											{/each}
 										</div>
@@ -458,43 +524,54 @@
 
 									{#if part.type === 'tool-provide_full_recipe' && (part.state === 'input-available' || part.state === 'output-available')}
 										{@const recipe = getFullRecipeInput(part.input)}
-										
+
 										{#if recipe?.title}
 											<div class="mt-4 space-y-4" in:slide>
 												<div class="flex items-center gap-3">
 													<h3 class="text-xl font-bold">{recipe.title}</h3>
 													{#if recipe.category === 'grilling'}
-														<span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">{m['recipe.category_grill_recipe']()}</span>
+														<span
+															class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800"
+															>{m['recipe.category_grill_recipe']()}</span
+														>
 													{:else if recipe.category === 'mixing'}
-														<span class="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800">{m['recipe.category_drink_recipe']()}</span>
+														<span
+															class="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800"
+															>{m['recipe.category_drink_recipe']()}</span
+														>
 													{:else if recipe.category === 'baking'}
-														<span class="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-800">{m['recipe.category_baking_recipe']()}</span>
+														<span
+															class="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-800"
+															>{m['recipe.category_baking_recipe']()}</span
+														>
 													{:else if recipe.category === 'airfrying'}
-														<span class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">{m['recipe.category_airfryer_recipe']()}</span>
+														<span
+															class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800"
+															>{m['recipe.category_airfryer_recipe']()}</span
+														>
 													{/if}
 												</div>
 
-												<div class="rounded-lg bg-blue-50 p-3">
-													<h4 class="mb-1 font-semibold">{m['recipe.ingredients']()}</h4>
-													<ul class="text-sm">
-														
+												<div class="rounded-xl bg-primary/5 border border-primary/15 p-3.5 sm:p-4">
+													<h4 class="mb-2 font-semibold text-foreground">{m['recipe.ingredients']()}</h4>
+													<ul class="text-sm space-y-1 text-foreground/80">
 														{#each recipe?.ingredients || [] as ingredient, index (index)}
 															<li>• {ingredient.menge} {ingredient.name}</li>
 														{/each}
 													</ul>
 												</div>
 
-												
 												<div class="space-y-2">
-													
 													{#each recipe?.steps || [] as step, stepIndex (stepIndex)}
 														<div
-															class="rounded-lg border p-3 {currentStepIndex === stepIndex
-																? 'border-blue-500 bg-blue-50'
-																: 'opacity-50'}"
+															class="rounded-lg border p-3.5 transition-all {currentStepIndex === stepIndex
+																? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
+																: 'border-border bg-card/60 opacity-60'}"
 														>
 															<div class="flex items-start justify-between">
-																<span class="font-bold">{m['recipe.step']({ number: stepIndex + 1 })}</span>
+																<span class="font-bold"
+																	>{m['recipe.step']({ number: stepIndex + 1 })}</span
+																>
 																{#if step?.timerMinutes}
 																	<div class="flex flex-wrap items-center gap-2">
 																		{#if currentStepIndex === stepIndex}
@@ -576,25 +653,48 @@
 																{/if}
 															</div>
 
-															
-															<p class="my-2 text-sm">{step?.instruction || m['recipe.loading_instruction']()}</p>
+															<p class="my-2 text-sm">
+																{step?.instruction || m['recipe.loading_instruction']()}
+															</p>
 
 															<div class="flex flex-wrap gap-2 text-xs text-gray-600">
 																{#if step?.equipment}<span>🍳 {step.equipment}</span>{/if}
-																{#if step?.heatLevel}<span>🔥 {m['recipe.heat_level']({ level: step.heatLevel })}</span>{/if}
+																{#if step?.heatLevel}<span
+																		>🔥 {m['recipe.heat_level']({ level: step.heatLevel })}</span
+																	>{/if}
 																{#if step?.hasLid !== undefined}
-																	<span>{step.hasLid ? m['recipe.with_lid']() : m['recipe.without_lid']()}</span>
+																	<span
+																		>{step.hasLid
+																			? m['recipe.with_lid']()
+																			: m['recipe.without_lid']()}</span
+																	>
 																{/if}
-																{#if step?.grillZone}<span>{m['recipe.grill_zone']({ zone: step.grillZone })}</span>{/if}
-																{#if step?.grillTemperature}<span>🌡️ {step.grillTemperature}°C</span>{/if}
+																{#if step?.grillZone}<span
+																		>{m['recipe.grill_zone']({ zone: step.grillZone })}</span
+																	>{/if}
+																{#if step?.grillTemperature}<span>🌡️ {step.grillTemperature}°C</span
+																	>{/if}
 																{#if step?.lidClosed !== undefined}
-																	<span>{step.lidClosed ? m['recipe.lid_closed']() : m['recipe.lid_open']()}</span>
+																	<span
+																		>{step.lidClosed
+																			? m['recipe.lid_closed']()
+																			: m['recipe.lid_open']()}</span
+																	>
 																{/if}
-																{#if step?.actionType}<span>{m['recipe.action']({ action: step.actionType })}</span>{/if}
-																{#if step?.iceType && step.iceType !== 'none'}<span>{m['recipe.ice']({ ice: step.iceType })}</span>{/if}
-																{#if step?.glassType}<span>{m['recipe.glass']({ glass: step.glassType })}</span>{/if}
-																{#if step?.shakeTimeSeconds}<span>⏱️ {step.shakeTimeSeconds}s</span>{/if}
-																{#if step?.temperatureCelsius}<span>🌡️ {step.temperatureCelsius}°C</span>{/if}
+																{#if step?.actionType}<span
+																		>{m['recipe.action']({ action: step.actionType })}</span
+																	>{/if}
+																{#if step?.iceType && step.iceType !== 'none'}<span
+																		>{m['recipe.ice']({ ice: step.iceType })}</span
+																	>{/if}
+																{#if step?.glassType}<span
+																		>{m['recipe.glass']({ glass: step.glassType })}</span
+																	>{/if}
+																{#if step?.shakeTimeSeconds}<span>⏱️ {step.shakeTimeSeconds}s</span
+																	>{/if}
+																{#if step?.temperatureCelsius}<span
+																		>🌡️ {step.temperatureCelsius}°C</span
+																	>{/if}
 																{#if step?.ovenMode}<span>♨️ {step.ovenMode}</span>{/if}
 															</div>
 
@@ -646,32 +746,33 @@
 							</CardContent>
 						</Card>
 					{/if}
-					
+
 					{#if message.role === 'user'}
-						<div class="rounded-2xl rounded-tr-none bg-blue-600 p-3 text-white">
+						<div
+							class="rounded-2xl rounded-tr-xs bg-primary px-4 py-2.5 sm:px-5 sm:py-3 text-sm sm:text-base font-normal leading-relaxed text-primary-foreground shadow-2xs"
+						>
 							{#if message.parts.length > 0 && message.parts[0].type === 'text'}
-								{message.parts[0].text}
+								<p class="whitespace-pre-wrap break-words">{message.parts[0].text}</p>
 							{/if}
 						</div>
 					{/if}
 				</div>
 			</div>
 		{/each}
-		
+
 		{#if chat.status === 'submitted' || chat.status === 'streaming'}
-			<div class="mb-4 flex justify-start">
-				<div class="max-w-[90%]">
-					<Card>
-						<CardContent class="flex items-center gap-3 p-4 text-gray-500">
-							
+			<div class="flex justify-start w-full">
+				<div class="w-full">
+					<Card class="border-border bg-card shadow-2xs">
+						<CardContent class="flex items-center gap-3 p-4 text-muted-foreground">
 							<div class="flex space-x-1.5">
 								<div
-									class="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]"
+									class="h-2 w-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]"
 								></div>
 								<div
-									class="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s]"
+									class="h-2 w-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.15s]"
 								></div>
-								<div class="h-2 w-2 animate-bounce rounded-full bg-gray-400"></div>
+								<div class="h-2 w-2 animate-bounce rounded-full bg-primary/60"></div>
 							</div>
 							<span class="text-sm font-medium">{m['chat.thinking']()}</span>
 						</CardContent>
@@ -681,59 +782,64 @@
 		{/if}
 		{#if errorMessageBanner}
 			<div
-				class="mx-auto mb-4 flex max-w-4xl items-center justify-between rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm"
+				class="w-full flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700/60 p-4 text-amber-900 dark:text-amber-200 shadow-sm"
 				in:slide
 			>
 				<div class="flex items-start gap-3">
 					<span class="text-xl">⚠️</span>
 					<div>
 						<h4 class="text-sm font-bold">{m['chat.quota_title']()}</h4>
-						<p class="text-xs text-amber-800">{errorMessageBanner}</p>
+						<p class="text-xs text-amber-800 dark:text-amber-300">{errorMessageBanner}</p>
 					</div>
 				</div>
 				<button
 					onclick={() => (errorMessageBanner = null)}
-					class="px-2 py-1 text-sm font-bold text-amber-700 hover:text-amber-900"
+					class="px-2 py-1 text-sm font-bold text-amber-700 hover:text-amber-900 dark:text-amber-300"
 				>
 					✕
 				</button>
 			</div>
 		{/if}
+		</div>
 	</main>
 
-	
-	<div class="sticky bottom-0 z-10 mt-4 w-full border-t bg-background p-4">
-		<form onsubmit={handleFormSubmit} class="mx-auto flex max-w-4xl items-center gap-2">
-			
-			<select
-				value={selectedModel}
-				onchange={(e) => handleModelChange(e.currentTarget.value)}
-				disabled={chat.status === 'streaming' || chat.status === 'submitted'}
-				class="h-9 rounded-lg border border-input bg-white px-3 py-1 text-xs font-medium text-foreground shadow-xs outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:opacity-50"
-			>
-				{#each AVAILABLE_MODELS as modelOption (modelOption.id)}
-					<option value={modelOption.id}>
-						{modelOption.name} ({modelOption.isRecommended ? `${m['chat.recommended']()} - ` : ''}{getModelNote(modelOption) ? `${getModelNote(modelOption)} - ` : ''}{modelOption.provider})
-					</option>
-				{/each}
-			</select>
+	<div class="shrink-0 border-t border-border bg-background/95 backdrop-blur-xs p-3 sm:p-4">
+		<div class="mx-auto flex max-w-4xl flex-col gap-2.5">
+			<!-- Header toolbar with Modern Model Selector -->
+			<div class="flex items-center justify-between px-1">
+				<ModelSelector
+					{selectedModel}
+					onModelChange={handleModelChange}
+					disabled={chat.status === 'streaming' || chat.status === 'submitted'}
+					align="start"
+					side="top"
+				/>
+			</div>
 
-			<Input
-				bind:value={inputValue}
-				placeholder={m['chat.input_placeholder']()}
-				class="flex-1"
-				disabled={chat.status === 'streaming' || chat.status === 'submitted'}
-				autocomplete="off"
-				autocorrect="off"
-				autocapitalize="off"
-				spellcheck="false"
-			/>
-			<Button
-				type="submit"
-				disabled={chat.status === 'streaming' || chat.status === 'submitted' || !inputValue.trim()}
+			<!-- Modern Input Bar -->
+			<form
+				onsubmit={handleFormSubmit}
+				class="flex items-center gap-2 rounded-xl border border-border bg-card p-1.5 shadow-2xs focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 transition-all"
 			>
-				{m['chat.send']()}
-			</Button>
-		</form>
+				<Input
+					bind:value={inputValue}
+					placeholder={m['chat.input_placeholder']()}
+					class="border-0 shadow-none focus-visible:ring-0 flex-1 bg-transparent text-sm sm:text-base py-2.5 px-3 h-auto"
+					disabled={chat.status === 'streaming' || chat.status === 'submitted'}
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+				/>
+				<Button
+					type="submit"
+					class="h-10 px-4 sm:px-5 font-semibold shrink-0 gap-1.5"
+					disabled={chat.status === 'streaming' || chat.status === 'submitted' || !inputValue.trim()}
+				>
+					<Send class="h-4 w-4" />
+					<span class="hidden sm:inline">{m['chat.send']()}</span>
+				</Button>
+			</form>
+		</div>
 	</div>
 </div>

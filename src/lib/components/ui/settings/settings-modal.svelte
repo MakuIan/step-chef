@@ -1,7 +1,19 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { X, Check, Flame, Utensils, GlassWater, CookingPot, Wrench, Key, Eye, EyeOff } from 'lucide-svelte';
+	import {
+		X,
+		Check,
+		Flame,
+		Utensils,
+		GlassWater,
+		CookingPot,
+		Wrench,
+		Key,
+		Eye,
+		EyeOff,
+		type Icon as LucideIcon
+	} from 'lucide-svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { ConvexClient } from 'convex/browser';
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
@@ -21,6 +33,8 @@
 	let enabledEquipments = $state<string[]>(['stove', 'oven', 'grill', 'barware', 'airfryer']);
 	let openrouterApiKey = $state('');
 	let showOpenrouterApiKey = $state(false);
+	let groqApiKey = $state('');
+	let showGroqApiKey = $state(false);
 	let geminiApiKey = $state('');
 	let showGeminiApiKey = $state(false);
 
@@ -31,22 +45,92 @@
 	const session = authClient.useSession();
 
 	const ALL_COOKWARE = [
-		{ id: 'Beschichtete Pfanne', get label() { return m['settings.cookware_nonstick'](); } },
-		{ id: 'Edelstahlpfanne', get label() { return m['settings.cookware_stainless'](); } },
-		{ id: 'Gusseisenpfanne', get label() { return m['settings.cookware_castiron'](); } },
-		{ id: 'Wok', get label() { return m['settings.cookware_wok'](); } },
-		{ id: 'Suppentopf', get label() { return m['settings.cookware_stockpot'](); } },
-		{ id: 'Bräter', get label() { return m['settings.cookware_roaster'](); } },
-		{ id: 'Schnellkochtopf', get label() { return m['settings.cookware_pressure'](); } },
-		{ id: 'Kasserolle', get label() { return m['settings.cookware_saucepan'](); } }
+		{
+			id: 'Beschichtete Pfanne',
+			get label() {
+				return m['settings.cookware_nonstick']();
+			}
+		},
+		{
+			id: 'Edelstahlpfanne',
+			get label() {
+				return m['settings.cookware_stainless']();
+			}
+		},
+		{
+			id: 'Gusseisenpfanne',
+			get label() {
+				return m['settings.cookware_castiron']();
+			}
+		},
+		{
+			id: 'Wok',
+			get label() {
+				return m['settings.cookware_wok']();
+			}
+		},
+		{
+			id: 'Suppentopf',
+			get label() {
+				return m['settings.cookware_stockpot']();
+			}
+		},
+		{
+			id: 'Bräter',
+			get label() {
+				return m['settings.cookware_roaster']();
+			}
+		},
+		{
+			id: 'Schnellkochtopf',
+			get label() {
+				return m['settings.cookware_pressure']();
+			}
+		},
+		{
+			id: 'Kasserolle',
+			get label() {
+				return m['settings.cookware_saucepan']();
+			}
+		}
 	];
 
 	const ALL_EQUIPMENTS = [
-		{ id: 'stove', get label() { return m['settings.eq_stove'](); }, icon: CookingPot },
-		{ id: 'grill', get label() { return m['settings.eq_grill'](); }, icon: Flame },
-		{ id: 'barware', get label() { return m['settings.eq_barware'](); }, icon: GlassWater },
-		{ id: 'oven', get label() { return m['settings.eq_oven'](); }, icon: Utensils },
-		{ id: 'airfryer', get label() { return m['settings.eq_airfryer'](); }, icon: Wrench }
+		{
+			id: 'stove',
+			get label() {
+				return m['settings.eq_stove']();
+			},
+			icon: CookingPot
+		},
+		{
+			id: 'grill',
+			get label() {
+				return m['settings.eq_grill']();
+			},
+			icon: Flame
+		},
+		{
+			id: 'barware',
+			get label() {
+				return m['settings.eq_barware']();
+			},
+			icon: GlassWater
+		},
+		{
+			id: 'oven',
+			get label() {
+				return m['settings.eq_oven']();
+			},
+			icon: Utensils
+		},
+		{
+			id: 'airfryer',
+			get label() {
+				return m['settings.eq_airfryer']();
+			},
+			icon: Wrench
+		}
 	];
 
 	$effect(() => {
@@ -60,6 +144,7 @@
 						availableCookware = settings.availableCookware ?? [];
 						enabledEquipments = settings.enabledEquipments ?? [];
 						openrouterApiKey = settings.openrouterApiKey ?? '';
+						groqApiKey = settings.groqApiKey ?? '';
 						geminiApiKey = settings.geminiApiKey ?? '';
 					}
 				})
@@ -96,6 +181,7 @@
 				availableCookware,
 				enabledEquipments,
 				openrouterApiKey: openrouterApiKey.trim() || undefined,
+				groqApiKey: groqApiKey.trim() || undefined,
 				geminiApiKey: geminiApiKey.trim() || undefined
 			});
 			saveMessage = m['settings.saved_success']();
@@ -112,8 +198,8 @@
 </script>
 
 <!-- Reusable UI Snippets -->
-{#snippet sectionCard(title: string, Icon: any, iconColor: string, children: Snippet)}
-	<div class="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
+{#snippet sectionCard(title: string, Icon: typeof LucideIcon, iconColor: string, children: Snippet)}
+	<div class="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
 		<h3 class="flex items-center gap-2 font-semibold text-foreground">
 			<Icon class="h-5 w-5 {iconColor}" />
 			{title}
@@ -124,7 +210,7 @@
 
 {#snippet selectField(id: string, label: string, children: Snippet)}
 	<div>
-		<label for={id} class="block text-xs font-medium text-muted-foreground mb-1">
+		<label for={id} class="mb-1 block text-xs font-medium text-muted-foreground">
 			{label}
 		</label>
 		{@render children()}
@@ -142,7 +228,7 @@
 	onInput: (val: string) => void
 )}
 	<div>
-		<label for={id} class="block text-xs font-medium text-muted-foreground mb-1">
+		<label for={id} class="mb-1 block text-xs font-medium text-muted-foreground">
 			{label}
 		</label>
 		<div class="relative flex items-center">
@@ -152,12 +238,12 @@
 				{value}
 				oninput={(e) => onInput(e.currentTarget.value)}
 				{placeholder}
-				class="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+				class="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
 			/>
 			<button
 				type="button"
 				onclick={onToggle}
-				class="absolute right-2 text-muted-foreground hover:text-foreground p-1"
+				class="absolute right-2 p-1 text-muted-foreground hover:text-foreground"
 				title={showKey ? 'Ausblenden' : 'Anzeigen'}
 			>
 				{#if showKey}
@@ -211,12 +297,16 @@
 				{@render sectionCard(m['settings.stove_section'](), Flame, 'text-orange-500', stoveContent)}
 				{#snippet stoveContent()}
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						{@render selectField('stove-level-select', m['settings.stove_max_level'](), stoveLevelSelect)}
+						{@render selectField(
+							'stove-level-select',
+							m['settings.stove_max_level'](),
+							stoveLevelSelect
+						)}
 						{#snippet stoveLevelSelect()}
 							<select
 								id="stove-level-select"
 								bind:value={stoveMaxLevel}
-								class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+								class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
 							>
 								<option value={6}>{m['settings.stove_levels_6']()}</option>
 								<option value={9}>{m['settings.stove_levels_9']()}</option>
@@ -229,7 +319,7 @@
 							<select
 								id="stove-type-select"
 								bind:value={stoveType}
-								class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+								class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
 							>
 								<option value="Induktion">{m['settings.stove_type_induction']()}</option>
 								<option value="Ceran">{m['settings.stove_type_ceramic']()}</option>
@@ -241,7 +331,12 @@
 				{/snippet}
 
 				<!-- Vorhandene Töpfe & Pfannen -->
-				{@render sectionCard(m['settings.cookware_section'](), CookingPot, 'text-blue-500', cookwareContent)}
+				{@render sectionCard(
+					m['settings.cookware_section'](),
+					CookingPot,
+					'text-blue-500',
+					cookwareContent
+				)}
 				{#snippet cookwareContent()}
 					<div class="flex flex-wrap gap-2">
 						{#each ALL_COOKWARE as cookware (cookware.id)}
@@ -263,16 +358,21 @@
 				{/snippet}
 
 				<!-- Zubereitungsarten & Stationen -->
-				{@render sectionCard(m['settings.equipment_section'](), GlassWater, 'text-purple-500', equipmentContent)}
+				{@render sectionCard(
+					m['settings.equipment_section'](),
+					GlassWater,
+					'text-purple-500',
+					equipmentContent
+				)}
 				{#snippet equipmentContent()}
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						{#each ALL_EQUIPMENTS as eq (eq.id)}
 							{@const isSelected = enabledEquipments.includes(eq.id)}
 							<button
 								type="button"
 								onclick={() => toggleEquipment(eq.id)}
 								class="flex items-center justify-between rounded-xl border p-3 text-left transition-all {isSelected
-									? 'border-purple-500 bg-purple-500/10 text-foreground font-medium'
+									? 'border-purple-500 bg-purple-500/10 font-medium text-foreground'
 									: 'border-border bg-background text-muted-foreground hover:border-foreground/30'}"
 							>
 								<span class="text-sm">{eq.label}</span>
@@ -285,7 +385,12 @@
 				{/snippet}
 
 				<!-- API-Schlüssel Section -->
-				{@render sectionCard(m['settings.openrouter_section'](), Key, 'text-emerald-500', apiKeysContent)}
+				{@render sectionCard(
+					m['settings.openrouter_section'](),
+					Key,
+					'text-emerald-500',
+					apiKeysContent
+				)}
 				{#snippet apiKeysContent()}
 					<div class="space-y-4">
 						{@render apiKeyInput(
@@ -297,6 +402,17 @@
 							showOpenrouterApiKey,
 							() => (showOpenrouterApiKey = !showOpenrouterApiKey),
 							(val) => (openrouterApiKey = val)
+						)}
+
+						{@render apiKeyInput(
+							'groq-key-input',
+							m['settings.groq_key_label'](),
+							groqApiKey,
+							m['settings.groq_key_placeholder'](),
+							m['settings.groq_key_help'](),
+							showGroqApiKey,
+							() => (showGroqApiKey = !showGroqApiKey),
+							(val) => (groqApiKey = val)
 						)}
 
 						{@render apiKeyInput(

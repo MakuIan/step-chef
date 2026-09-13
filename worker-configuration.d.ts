@@ -6,6 +6,7 @@ declare namespace Cloudflare {
 		ASSETS: Fetcher;
 		RESEND_API_KEY: string;
 		GOOGLE_API_KEY: string;
+		GROQ_API_KEY: string;
 		OPENROUTER_API_KEY: string;
 		FACEBOOK_CLIENT_ID: string;
 		FACEBOOK_CLIENT_SECRET: string;

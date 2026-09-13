@@ -6,6 +6,21 @@ import { api } from '../../../../../convex/_generated/api';
 
 const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL.replace(/\/+$/, ''));
 
+interface OpenRouterKeyInfo {
+	label?: string;
+	usage?: number;
+	limit?: number | null;
+	is_free_tier?: boolean;
+	rate_limit?: {
+		requests?: number;
+		interval?: string;
+	} | null;
+}
+
+interface OpenRouterKeyResponse {
+	data?: OpenRouterKeyInfo;
+}
+
 export const GET: RequestHandler = async ({ locals: { user } }) => {
 	if (!user) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
@@ -15,7 +30,9 @@ export const GET: RequestHandler = async ({ locals: { user } }) => {
 	let keyType: 'custom' | 'system' = 'system';
 
 	try {
-		const userSettings = await convex.query(api.userSettings.getUserSettings, { email: user.email });
+		const userSettings = await convex.query(api.userSettings.getUserSettings, {
+			email: user.email
+		});
 		if (userSettings?.openrouterApiKey?.trim()) {
 			apiKeyToUse = userSettings.openrouterApiKey.trim();
 			keyType = 'custom';
@@ -52,7 +69,7 @@ export const GET: RequestHandler = async ({ locals: { user } }) => {
 			);
 		}
 
-		const data: any = await res.json();
+		const data = (await res.json()) as OpenRouterKeyResponse;
 		const keyData = data.data || {};
 
 		const limit = keyData.limit !== undefined && keyData.limit !== null ? keyData.limit : null;
@@ -69,13 +86,13 @@ export const GET: RequestHandler = async ({ locals: { user } }) => {
 			isFreeTier: keyData.is_free_tier ?? false,
 			rateLimit: keyData.rate_limit || null
 		});
-	} catch (err: any) {
+	} catch (err) {
 		console.error('Error fetching OpenRouter usage:', err);
 		return json(
 			{
 				hasKey: true,
 				keyType,
-				error: err.message || 'Verbindung zu OpenRouter fehlgeschlagen'
+				error: err instanceof Error ? err.message : 'Verbindung zu OpenRouter fehlgeschlagen'
 			},
 			{ status: 500 }
 		);

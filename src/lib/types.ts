@@ -1,7 +1,16 @@
 import type { Database } from './database.types';
 
 export type RecipeCategory = 'cooking' | 'grilling' | 'mixing' | 'baking' | 'airfrying' | 'general';
-export type ApplianceType = 'stove' | 'oven' | 'microwave' | 'grill' | 'barware' | 'blender' | 'airfryer' | 'prep' | 'none';
+export type ApplianceType =
+	| 'stove'
+	| 'oven'
+	| 'microwave'
+	| 'grill'
+	| 'barware'
+	| 'blender'
+	| 'airfryer'
+	| 'prep'
+	| 'none';
 
 export type DrinkActionType = 'shake' | 'stir' | 'muddle' | 'blend' | 'build' | 'strain';
 export type DrinkIceType = 'cubes' | 'crushed' | 'none';
@@ -41,6 +50,9 @@ export interface UserSettings {
 	stoveType: string;
 	availableCookware: string[];
 	enabledEquipments: string[];
+	openrouterApiKey?: string;
+	geminiApiKey?: string;
+	groqApiKey?: string;
 }
 
 type RecipeRow = Database['public']['Tables']['recipes']['Row'];
@@ -49,4 +61,3 @@ export interface AppRecipe extends Omit<RecipeRow, 'steps'> {
 	category?: RecipeCategory;
 	steps: RecipeStep[];
 }
-

@@ -50,7 +50,7 @@ export default defineSchema({
 		enabledEquipments: v.array(v.string()),
 		openrouterApiKey: v.optional(v.string()),
 		geminiApiKey: v.optional(v.string()),
+		groqApiKey: v.optional(v.string()),
 		updatedAt: v.number()
 	}).index('by_user_id', ['userId'])
 });
-

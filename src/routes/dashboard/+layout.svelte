@@ -20,6 +20,7 @@
 	import { ConvexClient } from 'convex/browser';
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
 	import { api } from '../../../convex/_generated/api';
+	import type { Id } from '../../../convex/_generated/dataModel';
 	import { invalidateAll, goto } from '$app/navigation';
 	import * as m from '$lib/paraglide/messages';
 	import { page } from '$app/state';
@@ -50,7 +51,7 @@
 	async function handleUpdateTitle(chatId: string) {
 		if (editingTitle.trim()) {
 			await convexClient.mutation(api.chat.updateTitle, {
-				chatId: chatId as any,
+				chatId: chatId as Id<'chats'>,
 				title: editingTitle
 			});
 			editingChatId = null;
@@ -64,7 +65,7 @@
 		const targetId = chatToDelete.id;
 		try {
 			await convexClient.mutation(api.chat.deleteChat, {
-				chatId: targetId as any
+				chatId: targetId as Id<'chats'>
 			});
 			await invalidateAll();
 			if (page.params.chatId === targetId) {
@@ -267,7 +268,7 @@
 			</div>
 		</header>
 
-		<div class="flex-1 overflow-y-auto">
+		<div class="flex-1 min-h-0 flex flex-col overflow-hidden">
 			{@render children()}
 		</div>
 	</main>

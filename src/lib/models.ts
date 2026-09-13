@@ -5,17 +5,30 @@ export type ModelNoteKey = 'slow' | 'very_slow' | 'very_restrictive';
 export interface ModelOption {
 	id: string;
 	name: string;
-	provider: 'OpenRouter' | 'Google';
+	provider: 'OpenRouter' | 'Google' | 'Groq';
 	isRecommended: boolean;
 	noteKey?: ModelNoteKey;
 }
 
 export const AVAILABLE_MODELS = [
 	{
-		id: 'inclusionai/ling-3.0-flash:free',
-		name: 'Ling 3.0 Flash',
-		provider: 'OpenRouter',
+		id: 'groq/openai/gpt-oss-120b',
+		name: 'GPT-OSS 120B',
+		provider: 'Groq',
 		isRecommended: true
+	},
+	{
+		id: 'groq/openai/gpt-oss-20b',
+		name: 'GPT-OSS 20B',
+		provider: 'Groq',
+		isRecommended: true
+	},
+	{
+		id: 'groq/qwen/qwen3.6-27b',
+		name: 'Qwen 3.6 27B',
+		provider: 'Groq',
+		isRecommended: false,
+		noteKey: 'very_slow'
 	},
 	{
 		id: 'cohere/north-mini-code:free',
@@ -23,6 +36,12 @@ export const AVAILABLE_MODELS = [
 		provider: 'OpenRouter',
 		isRecommended: false,
 		noteKey: 'slow'
+	},
+	{
+		id: 'inclusionai/ling-3.0-flash-fin:free',
+		name: 'Ling 3.0 Flash',
+		provider: 'OpenRouter',
+		isRecommended: false
 	},
 	{
 		id: 'nvidia/nemotron-3-ultra-550b-a55b:free',
